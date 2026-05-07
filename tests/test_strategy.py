@@ -22,8 +22,8 @@ def test_confidence_clamped_at_100():
 
 
 def test_confidence_clamped_at_0():
-    s = Strategy()
-    ta = {"signal": "SELL", "strength": 5, "indicators": {}}
+    s = Strategy(sentiment_weight=1.0)
+    ta = {"signal": "BUY", "strength": 5, "indicators": {}}
     sentiment = {"score": -1.0, "confidence": 1.0}
     result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1)
     assert result.confidence == 0
@@ -45,7 +45,7 @@ def test_sentiment_cannot_trigger_signal():
     assert result.action == "HOLD"
 
 
-def test_negative_sentiment_reduces_confidence():
+def test_negative_sentiment_reduces_buy_confidence():
     s = Strategy()
     ta = {"signal": "BUY", "strength": 70, "indicators": {}}
     sentiment = {"score": -0.8, "confidence": 0.9}
@@ -72,3 +72,51 @@ def test_returns_signal_with_dry_run_mode():
     assert result.pair == "ETH/USDT"
     assert result.price == 3000.0
     assert result.quantity == 1.5
+
+
+def test_sell_positive_sentiment_reduces_confidence():
+    s = Strategy()
+    ta = {"signal": "SELL", "strength": 70, "indicators": {}}
+    sentiment = {"score": 0.8, "confidence": 0.9}
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1)
+    assert result.action == "SELL"
+    assert result.confidence < 70
+
+
+def test_sell_negative_sentiment_increases_confidence():
+    s = Strategy()
+    ta = {"signal": "SELL", "strength": 70, "indicators": {}}
+    sentiment = {"score": -0.8, "confidence": 0.9}
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1)
+    assert result.action == "SELL"
+    assert result.confidence > 70
+    assert result.confidence <= 100
+
+
+def test_hold_remains_hold_with_extreme_sentiment():
+    s = Strategy(sentiment_weight=5.0)
+    ta = {"signal": "HOLD", "strength": 50, "indicators": {}}
+    sentiment = {"score": 1.0, "confidence": 1.0}
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1)
+    assert result.action == "HOLD"
+
+
+def test_sell_confidence_clamped_at_0():
+    s = Strategy(sentiment_weight=1.0)
+    ta = {"signal": "SELL", "strength": 5, "indicators": {}}
+    sentiment = {"score": 1.0, "confidence": 1.0}
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1)
+    assert result.confidence == 0
+
+
+def test_sell_confidence_clamped_at_100():
+    s = Strategy(sentiment_weight=1.0)
+    ta = {"signal": "SELL", "strength": 80, "indicators": {}}
+    sentiment = {"score": -1.0, "confidence": 1.0}
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1)
+    assert result.confidence == 100
+
+
+def test_default_sentiment_weight():
+    s = Strategy()
+    assert s.sentiment_weight == 0.3
