@@ -4,19 +4,10 @@ from unittest.mock import MagicMock, patch
 from core.sentiment import SentimentAnalyzer
 
 
-def _mock_claude_response(score=0.7, confidence=0.85, summary="Bullish"):
-    mock_resp = MagicMock()
-    mock_resp.content = [MagicMock(type="text", text=json.dumps({
-        "score": score,
-        "confidence": confidence,
-        "summary": summary,
-    }))]
-    return mock_resp
-
-
-def test_valid_claude_response():
-    with patch("core.sentiment.Anthropic") as mock_cls:
-        mock_cls.return_value.messages.create.return_value = _mock_claude_response()
+def test_valid_llm_response():
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps({"score": 0.7, "confidence": 0.85, "summary": "Bullish"})
+    with patch("core.sentiment.create_provider", return_value=mock_llm):
         sa = SentimentAnalyzer(api_key="test-key")
         result = sa.analyze(["Bitcoin rallies past $70k"])
         assert result["score"] == 0.7
@@ -24,9 +15,10 @@ def test_valid_claude_response():
         assert result["summary"] == "Bullish"
 
 
-def test_claude_exception_returns_neutral():
-    with patch("core.sentiment.Anthropic") as mock_cls:
-        mock_cls.return_value.messages.create.side_effect = Exception("API down")
+def test_llm_exception_returns_neutral():
+    mock_llm = MagicMock()
+    mock_llm.complete.side_effect = Exception("API down")
+    with patch("core.sentiment.create_provider", return_value=mock_llm):
         sa = SentimentAnalyzer(api_key="test-key")
         result = sa.analyze(["Bitcoin news"])
         assert result["score"] == 0.0
@@ -35,10 +27,9 @@ def test_claude_exception_returns_neutral():
 
 
 def test_invalid_json_returns_neutral():
-    mock_resp = MagicMock()
-    mock_resp.content = [MagicMock(type="text", text="not json at all")]
-    with patch("core.sentiment.Anthropic") as mock_cls:
-        mock_cls.return_value.messages.create.return_value = mock_resp
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = "not json at all"
+    with patch("core.sentiment.create_provider", return_value=mock_llm):
         sa = SentimentAnalyzer(api_key="test-key")
         result = sa.analyze(["News"])
         assert result["score"] == 0.0
@@ -46,10 +37,9 @@ def test_invalid_json_returns_neutral():
 
 
 def test_out_of_range_values_are_clamped():
-    with patch("core.sentiment.Anthropic") as mock_cls:
-        mock_cls.return_value.messages.create.return_value = _mock_claude_response(
-            score=2.5, confidence=5.0, summary="extreme"
-        )
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps({"score": 2.5, "confidence": 5.0, "summary": "extreme"})
+    with patch("core.sentiment.create_provider", return_value=mock_llm):
         sa = SentimentAnalyzer(api_key="test-key")
         result = sa.analyze(["News"])
         assert result["score"] == 1.0
@@ -57,10 +47,9 @@ def test_out_of_range_values_are_clamped():
 
 
 def test_negative_out_of_range_clamped():
-    with patch("core.sentiment.Anthropic") as mock_cls:
-        mock_cls.return_value.messages.create.return_value = _mock_claude_response(
-            score=-3.0, confidence=-1.0, summary="extreme negative"
-        )
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps({"score": -3.0, "confidence": -1.0, "summary": "extreme negative"})
+    with patch("core.sentiment.create_provider", return_value=mock_llm):
         sa = SentimentAnalyzer(api_key="test-key")
         result = sa.analyze(["News"])
         assert result["score"] == -1.0
@@ -68,8 +57,9 @@ def test_negative_out_of_range_clamped():
 
 
 def test_empty_headlines_list():
-    with patch("core.sentiment.Anthropic") as mock_cls:
-        mock_cls.return_value.messages.create.return_value = _mock_claude_response()
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps({"score": 0.7, "confidence": 0.85, "summary": "Bullish"})
+    with patch("core.sentiment.create_provider", return_value=mock_llm):
         sa = SentimentAnalyzer(api_key="test-key")
         result = sa.analyze([])
         assert result["score"] == 0.0

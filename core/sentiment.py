@@ -3,8 +3,8 @@ import json
 import logging
 
 import requests
-from anthropic import Anthropic
 
+from core.llm import LLMProvider, create_provider
 import config
 
 log = logging.getLogger(__name__)
@@ -19,19 +19,14 @@ News:
 
 class SentimentAnalyzer:
     def __init__(self, api_key: str | None = None):
-        self._client = Anthropic(api_key=api_key or config.CLAUDE_API_KEY)
+        self._llm: LLMProvider = create_provider(api_key=api_key)
 
     def analyze(self, headlines: list[str]) -> dict:
         if not headlines:
             return {"score": 0.0, "confidence": 0.0, "summary": "no data"}
         try:
             news_text = "\n".join(f"- {h}" for h in headlines)
-            response = self._client.messages.create(
-                model=config.CLAUDE_MODEL,
-                messages=[{"role": "user", "content": SENTIMENT_PROMPT.format(news=news_text)}],
-                max_tokens=200,
-            )
-            text = response.content[0].text
+            text = self._llm.complete(SENTIMENT_PROMPT.format(news=news_text), max_tokens=200)
             data = json.loads(text)
             score = max(-1.0, min(1.0, float(data.get("score", 0.0))))
             confidence = max(0.0, min(1.0, float(data.get("confidence", 0.0))))

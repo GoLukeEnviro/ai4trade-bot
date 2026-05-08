@@ -1,8 +1,7 @@
 import json
 import logging
 
-from anthropic import Anthropic
-
+from core.llm import LLMProvider, create_provider
 from core.signal_model import Intent
 import config
 
@@ -30,16 +29,12 @@ COMMANDER_PROMPT = (
 
 class Commander:
     def __init__(self, api_key: str | None = None):
-        self._client = Anthropic(api_key=api_key or config.CLAUDE_API_KEY)
+        self._llm: LLMProvider = create_provider(api_key=api_key)
 
     def parse(self, user_input: str) -> Intent:
         try:
-            response = self._client.messages.create(
-                model=config.CLAUDE_MODEL,
-                messages=[{"role": "user", "content": COMMANDER_PROMPT.format(message=user_input)}],
-                max_tokens=150,
-            )
-            data = json.loads(response.content[0].text)
+            text = self._llm.complete(COMMANDER_PROMPT.format(message=user_input), max_tokens=150)
+            data = json.loads(text)
             intent_name = data.get("intent", "unknown")
 
             if intent_name not in ALLOWED_INTENTS:
