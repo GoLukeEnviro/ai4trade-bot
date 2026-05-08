@@ -7,6 +7,11 @@ AI4TRADE_TOKEN = os.getenv("AI4TRADE_TOKEN", "")
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "claude")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+LLM_MODEL = os.getenv("LLM_MODEL", "")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")
+
 TRADING_PAIRS = [p.strip() for p in os.getenv("TRADING_PAIRS", "BTC/USDT,ETH/USDT,SOL/USDT").split(",")]
 DATA_INTERVAL = int(os.getenv("DATA_INTERVAL", "60"))
 SENTIMENT_INTERVAL = int(os.getenv("SENTIMENT_INTERVAL", "300"))
