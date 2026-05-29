@@ -1,7 +1,7 @@
 import json
 import logging
 
-from core.llm import LLMProvider, create_provider
+from ai.providers import LLMProvider, create_provider
 from core.signal_model import Intent
 import config
 
@@ -13,16 +13,32 @@ ALLOWED_INTENTS = {
     "close_positions",
     "show_pnl",
     "status",
+    "set_strategy",
+    "set_risk_level",
+    "show_performance",
+    "toggle_shadow_mode",
+    "show_audit_log",
 }
 
-APPROVAL_REQUIRED_INTENTS = {"close_positions"}
+APPROVAL_REQUIRED_INTENTS = {"close_positions", "set_risk_level", "toggle_shadow_mode"}
 
 COMMANDER_PROMPT = (
     "You are a trading bot command parser. Parse the user's message into a JSON intent.\n"
     f"Allowed intents: {', '.join(sorted(ALLOWED_INTENTS))}.\n"
     'Return ONLY JSON: {{"intent": "<intent>", "pair": "<PAIR/USDT>" or null, "requires_approval": true/false}}\n'
     "If no pair is mentioned, pair is null.\n"
-    "close_positions requires approval.\n\n"
+    "Intents requiring approval: close_positions, set_risk_level, toggle_shadow_mode.\n\n"
+    "Intent descriptions:\n"
+    "- pause_pair: Pause trading for a specific pair\n"
+    "- resume_pair: Resume trading for a specific pair\n"
+    "- close_positions: Close all positions (pair optional)\n"
+    "- show_pnl: Show profit and loss overview\n"
+    "- status: Show general bot status\n"
+    "- set_strategy: Switch to a different trading strategy\n"
+    "- set_risk_level: Change risk level (conservative/normal/aggressive)\n"
+    "- show_performance: Show performance statistics\n"
+    "- toggle_shadow_mode: Enable or disable shadow mode\n"
+    "- show_audit_log: Show recent audit log entries\n\n"
     "User message: {message}"
 )
 

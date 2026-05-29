@@ -117,3 +117,68 @@ def test_output_is_always_intent_object():
         intent = cmd.parse("anything")
         assert isinstance(intent, Intent)
         assert intent.mode == "dry_run"
+
+
+def test_set_strategy_intent():
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps(
+        {"intent": "set_strategy", "pair": None, "requires_approval": False}
+    )
+    with patch("chat.commander.create_provider", return_value=mock_llm):
+        cmd = Commander(api_key="test-key")
+        intent = cmd.parse("wechsel zu Momentum-Strategie")
+        assert intent.intent == "set_strategy"
+        assert intent.requires_approval is False
+        assert intent.mode == "dry_run"
+
+
+def test_set_risk_level_requires_approval():
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps(
+        {"intent": "set_risk_level", "pair": None, "requires_approval": False}
+    )
+    with patch("chat.commander.create_provider", return_value=mock_llm):
+        cmd = Commander(api_key="test-key")
+        intent = cmd.parse("setze Risiko auf aggressive")
+        assert intent.intent == "set_risk_level"
+        assert intent.requires_approval is True
+        assert intent.mode == "dry_run"
+
+
+def test_show_performance_intent():
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps(
+        {"intent": "show_performance", "pair": None, "requires_approval": False}
+    )
+    with patch("chat.commander.create_provider", return_value=mock_llm):
+        cmd = Commander(api_key="test-key")
+        intent = cmd.parse("zeige Performance-Statistiken")
+        assert intent.intent == "show_performance"
+        assert intent.requires_approval is False
+        assert intent.mode == "dry_run"
+
+
+def test_toggle_shadow_mode_requires_approval():
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps(
+        {"intent": "toggle_shadow_mode", "pair": None, "requires_approval": False}
+    )
+    with patch("chat.commander.create_provider", return_value=mock_llm):
+        cmd = Commander(api_key="test-key")
+        intent = cmd.parse("schalte Shadow Mode ein")
+        assert intent.intent == "toggle_shadow_mode"
+        assert intent.requires_approval is True
+        assert intent.mode == "dry_run"
+
+
+def test_show_audit_log_intent():
+    mock_llm = MagicMock()
+    mock_llm.complete.return_value = json.dumps(
+        {"intent": "show_audit_log", "pair": None, "requires_approval": False}
+    )
+    with patch("chat.commander.create_provider", return_value=mock_llm):
+        cmd = Commander(api_key="test-key")
+        intent = cmd.parse("zeige letzte Audit-Eintraege")
+        assert intent.intent == "show_audit_log"
+        assert intent.requires_approval is False
+        assert intent.mode == "dry_run"

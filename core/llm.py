@@ -1,46 +1,30 @@
-import logging
-from typing import Protocol
+# Backward-compatible re-exports — Logik lebt in ai/providers/
+import sys
 
-import config
-
-log = logging.getLogger(__name__)
+import config as _original_config
 
 
-class LLMProvider(Protocol):
-    def complete(self, prompt: str, max_tokens: int = 200) -> str: ...
+class _ConfigProxy:
+    """Leitet alle Attribut-Zugriffe an core.llm.config weiter.
+    So greifen Patches auf core.llm.config auch in den Provider-Modulen.
+    """
+    def __getattr__(self, name):
+        return getattr(sys.modules[__name__].__dict__["config"], name)
 
 
-class ClaudeProvider:
-    def __init__(self, api_key=None, model=None):
-        from anthropic import Anthropic
-        self._client = Anthropic(api_key=api_key or config.CLAUDE_API_KEY)
-        self._model = model or config.CLAUDE_MODEL
+config = _original_config
 
-    def complete(self, prompt, max_tokens=200):
-        response = self._client.messages.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-        )
-        return response.content[0].text
+from ai.providers.base import LLMProvider
+from ai.providers import claude_provider as _claude_mod
+from ai.providers import openai_provider as _openai_mod
 
+# Provider-Module nutzen den Proxy, damit Patches auf core.llm.config greifen.
+_proxy = _ConfigProxy()
+_claude_mod.config = _proxy
+_openai_mod.config = _proxy
 
-class OpenAICompatibleProvider:
-    def __init__(self, api_key=None, model=None, base_url=None):
-        from openai import OpenAI
-        self._client = OpenAI(
-            api_key=api_key or config.LLM_API_KEY or "not-needed",
-            base_url=base_url or config.LLM_BASE_URL,
-        )
-        self._model = model or config.LLM_MODEL
-
-    def complete(self, prompt, max_tokens=200):
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-        )
-        return response.choices[0].message.content
+ClaudeProvider = _claude_mod.ClaudeProvider
+OpenAICompatibleProvider = _openai_mod.OpenAICompatibleProvider
 
 
 def create_provider(provider=None, **kwargs):
