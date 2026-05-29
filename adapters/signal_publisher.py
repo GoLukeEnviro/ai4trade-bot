@@ -8,8 +8,9 @@ log = logging.getLogger(__name__)
 
 
 class SignalPublisher:
-    def __init__(self, client=None, max_queue: int | None = None):
+    def __init__(self, client=None, max_queue: int | None = None, repository=None):
         self._client = client
+        self._repository = repository
         self.queue: list[dict] = []
         self._max_queue = max_queue if max_queue is not None else config.MAX_SIGNAL_QUEUE
 
@@ -17,6 +18,8 @@ class SignalPublisher:
         try:
             if self._send(signal):
                 log.info(f"Signal veröffentlicht: {signal.pair} {signal.action}")
+                if self._repository is not None:
+                    self._repository.save_signal(signal)
                 return True
         except Exception as e:
             log.warning(f"Signal-Veröffentlichung fehlgeschlagen: {e}")

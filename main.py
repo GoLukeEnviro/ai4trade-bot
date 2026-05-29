@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import queue
@@ -23,14 +24,36 @@ shutdown_event = threading.Event()
 msg_queue: queue.Queue = queue.Queue()
 
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        entry = {
+            "timestamp": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info and record.exc_info[0] is not None:
+            entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(entry, ensure_ascii=False)
+
+
 def setup_logging() -> None:
     os.makedirs("storage", exist_ok=True)
     root = logging.getLogger()
     root.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
-    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    if config.LOG_FORMAT == "json":
+        fmt: logging.Formatter = JsonFormatter()
+    else:
+        fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     root.handlers.clear()
-    root.addHandler(logging.StreamHandler())
-    root.addHandler(RotatingFileHandler("storage/bot.log", maxBytes=10_000_000, backupCount=5, encoding="utf-8"))
+    stream = logging.StreamHandler()
+    stream.setFormatter(fmt)
+    root.addHandler(stream)
+    file_handler = RotatingFileHandler(
+        "storage/bot.log", maxBytes=10_000_000, backupCount=5, encoding="utf-8",
+    )
+    file_handler.setFormatter(fmt)
+    root.addHandler(file_handler)
 
 
 def graceful_shutdown(signum: int, frame) -> None:
@@ -44,6 +67,19 @@ def run() -> None:
     log.info("Mode: %s | Pairs: %s", config.MODE, config.TRADING_PAIRS)
 
     if config.MODE != "dry_run":
+        from core.two_factor import TwoFactorAuth
+
+        import sys
+
+        tfa = TwoFactorAuth(totp_secret=config.TOTP_SECRET)
+        print("2FA: Bitte TOTP-Code eingeben: ", end="", flush=True)
+        code = sys.stdin.readline().strip()
+        if not tfa.verify(code):
+            log.error("2FA-Verifizierung fehlgeschlagen. Beende.")
+            return
+        log.info("2FA-Verifizierung erfolgreich")
+
+    if config.MODE != "dry_run":
         log.error("Nur dry_run ist unterstuetzt. Beende.")
         return
 
@@ -53,9 +89,11 @@ def run() -> None:
 
     from adapters.ai4trade_client import AI4TradeClient
     from adapters.signal_publisher import SignalPublisher
+    from storage.sqlite_repository import SqliteSignalRepository
 
+    repository = SqliteSignalRepository(config.DB_PATH)
     client = AI4TradeClient()
-    publisher = SignalPublisher(client=client)
+    publisher = SignalPublisher(client=client, repository=repository)
     position_state = PositionState(client=client)
     risk_gate = RiskGate()
     signal_router = SignalRouter(publisher=publisher)
@@ -82,6 +120,8 @@ def run() -> None:
     last_sentiment_time = 0.0
 
     position_state.refresh()
+
+    repository.log_audit("bot_start", {"mode": config.MODE, "pairs": config.TRADING_PAIRS})
 
     while not shutdown_event.is_set():
         try:
@@ -126,6 +166,8 @@ def run() -> None:
         shutdown_event.wait(config.DATA_INTERVAL)
 
     signal_router.flush_queue(timeout=5)
+    repository.log_audit("bot_stop")
+    repository.close()
     log.info("Bot beendet.")
 
 
