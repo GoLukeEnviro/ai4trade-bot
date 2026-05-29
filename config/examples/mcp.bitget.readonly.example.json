@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "bitget-market": {
+      "command": "npx",
+      "args": ["-y", "bitget-mcp-server", "--modules", "market"],
+      "env": {
+        "BITGET_API_KEY": "",
+        "BITGET_SECRET_KEY": "",
+        "BITGET_PASSPHRASE": ""
+      }
+    }
+  }
+}
