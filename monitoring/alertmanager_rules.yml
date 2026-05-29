@@ -1,0 +1,38 @@
+groups:
+  - name: ai4trade-bot-alerts
+    rules:
+      - alert: HighDrawdown
+        expr: ai4trade_drawdown_pct > 15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Hoher Drawdown erkannt"
+          description: "Drawdown liegt bei {{ $value }}% (Schwellenwert: 15%)"
+
+      - alert: HighAPIErrorRate
+        expr: rate(ai4trade_api_errors_total[10m]) / rate(ai4trade_api_requests_total[10m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hohe API-Fehlerrate"
+          description: "API-Fehlerrate liegt bei {{ $value | humanizePercentage }} (Schwellenwert: 5%)"
+
+      - alert: HeartbeatLoss
+        expr: time() - ai4trade_last_signal_timestamp_seconds > 120
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kein Signal seit ueber 120 Sekunden"
+          description: "Letztes Signal liegt {{ $value }}s zurueck"
+
+      - alert: CircuitBreakerActive
+        expr: ai4trade_circuit_breaker_active == 1
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit Breaker ist aktiv"
+          description: "Der Circuit Breaker wurde ausgeloest und blockiert weitere Trades"

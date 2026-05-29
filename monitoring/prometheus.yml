@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "ai4trade-bot"
+    static_configs:
+      - targets: ["bot:9090"]
+
+rule_files:
+  - "alertmanager_rules.yml"

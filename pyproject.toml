@@ -1,2 +1,15 @@
+[project]
+name = "ai4trade-bot"
+version = "0.2.0"
+description = "KI-gestützter Krypto-Signalgenerator für AI4Trade"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
 [tool.pytest.ini_options]
 addopts = "-p no:asyncio"

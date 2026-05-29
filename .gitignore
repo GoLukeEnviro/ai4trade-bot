@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .env
+.claude/plans/
+.sisyphus/
 storage/*.jsonl
 storage/*.log
 !storage/.gitkeep
