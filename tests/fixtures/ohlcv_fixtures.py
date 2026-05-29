@@ -23,20 +23,17 @@ def make_ohlcv(n=200, base_price=50000.0, trend="up") -> pd.DataFrame:
     return pd.DataFrame(data, columns=["open", "high", "low", "close", "volume"])
 
 
-def make_binance_ohlcv_response(n=200, base_price=50000.0) -> list:
+def make_bitget_ohlcv_response(n=200, base_price=50000.0) -> list:
     df = make_ohlcv(n, base_price)
     result = []
     for _, row in df.iterrows():
         result.append([
-            int(row["open"] * 1000),
+            str(int(row["open"] * 1000)),
             str(row["open"]),
             str(row["high"]),
             str(row["low"]),
             str(row["close"]),
             str(row["volume"]),
-            int(row["volume"]),
-            str(row["volume"]),
-            0,
-            "0", "0", "0"
+            str(row["volume"] * row["close"]),
         ])
     return result

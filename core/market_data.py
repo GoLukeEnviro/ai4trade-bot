@@ -5,17 +5,19 @@ import pandas as pd
 import requests
 
 import config
+from exchanges.base import ExchangeClient
+from exchanges.factory import create_exchange
 
 log = logging.getLogger(__name__)
 
 
 class MarketData:
-    def __init__(self):
+    def __init__(self, exchange: ExchangeClient = None):
+        self._exchange = exchange or create_exchange()
         self._session = requests.Session()
-        self._binance = config.BINANCE_BASE
         self._coingecko = config.COINGECKO_BASE
 
-    def _retry(self, url, params=None, max_retries=3, backoff_base=1.0, source="binance"):
+    def _retry(self, url, params=None, max_retries=3, backoff_base=1.0, source="coingecko"):
         last_err = None
         for attempt in range(max_retries):
             try:
@@ -30,33 +32,13 @@ class MarketData:
 
     def get_ohlcv(self, symbol: str, interval: str = "1h", limit: int = 200) -> pd.DataFrame:
         try:
-            resp = self._retry(
-                f"{self._binance}/api/v3/klines",
-                params={"symbol": symbol, "interval": interval, "limit": limit},
-            )
-            return self._parse_binance_ohlcv(resp.json())
+            return self._exchange.get_ohlcv(symbol, interval, limit)
         except Exception:
-            log.warning(f"Binance fehlgeschlagen, Fallback auf CoinGecko für {symbol}")
+            log.warning(f"Exchange fehlgeschlagen, Fallback auf CoinGecko fuer {symbol}")
             return self._coingecko_ohlcv(symbol, limit)
 
     def get_price(self, symbol: str) -> float:
-        resp = self._retry(
-            f"{self._binance}/api/v3/ticker/price",
-            params={"symbol": symbol},
-        )
-        return float(resp.json()["price"])
-
-    def _parse_binance_ohlcv(self, raw: list) -> pd.DataFrame:
-        rows = []
-        for k in raw:
-            rows.append({
-                "open": float(k[1]),
-                "high": float(k[2]),
-                "low": float(k[3]),
-                "close": float(k[4]),
-                "volume": float(k[5]),
-            })
-        return pd.DataFrame(rows)
+        return self._exchange.get_price(symbol)
 
     def _coingecko_ohlcv(self, symbol: str, limit: int) -> pd.DataFrame:
         coin_id = symbol.lower().replace("usdt", "")

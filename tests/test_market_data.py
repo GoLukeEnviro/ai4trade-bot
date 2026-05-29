@@ -3,10 +3,14 @@ from core.market_data import MarketData
 
 
 @responses.activate
-def test_get_ohlcv_binance():
+def test_get_ohlcv_bitget():
     responses.get(
-        "https://api.binance.com/api/v3/klines",
-        json=[[0, "50000", "50500", "49500", "50200", "100", 0, "100", 0, "0", "0", "0"]],
+        "https://api.bitget.com/api/v2/spot/market/candles",
+        json={
+            "code": "00000",
+            "msg": "success",
+            "data": [["0", "50000", "50500", "49500", "50200", "100", "5000000"]],
+        },
     )
     md = MarketData()
     df = md.get_ohlcv("BTCUSDT", "1h", 1)
@@ -21,8 +25,8 @@ def test_get_ohlcv_binance():
 @responses.activate
 def test_get_price():
     responses.get(
-        "https://api.binance.com/api/v3/ticker/price",
-        json={"symbol": "BTCUSDT", "price": "65000.00"},
+        "https://api.bitget.com/api/v2/spot/market/tickers",
+        json={"code": "00000", "data": [{"symbol": "BTCUSDT", "lastPr": "65000.00"}]},
     )
     md = MarketData()
     price = md.get_price("BTCUSDT")
@@ -30,10 +34,10 @@ def test_get_price():
 
 
 @responses.activate
-def test_coingecko_fallback_on_binance_failure():
+def test_coingecko_fallback_on_bitget_failure():
     responses.get(
-        "https://api.binance.com/api/v3/klines",
-        body=Exception("Binance down"),
+        "https://api.bitget.com/api/v2/spot/market/candles",
+        body=Exception("Bitget down"),
         status=500,
     )
     responses.get(
