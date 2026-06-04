@@ -11,6 +11,7 @@ import config
 from adapters.heartbeat import Heartbeat
 from adapters.task_handler import TaskHandler
 from core.market_data import MarketData
+from core.market_signals import MarketSignalAnalyzer
 from core.sentiment import SentimentAnalyzer
 from core.strategy import Strategy
 from core.technical import TechnicalAnalyzer
@@ -99,6 +100,7 @@ def run() -> None:
     signal_router = SignalRouter(publisher=publisher)
     market_data = MarketData()
     technical = TechnicalAnalyzer()
+    market_signals = MarketSignalAnalyzer()
     sentiment_analyzer = SentimentAnalyzer()
     strategy = Strategy()
     heartbeat = Heartbeat(
@@ -129,6 +131,14 @@ def run() -> None:
                 symbol = pair.replace("/", "")
                 ohlcv = market_data.get_ohlcv(symbol, "1h", 200)
                 ta_result = technical.analyze(ohlcv)
+                market_context = market_signals.analyze(ohlcv, expected_interval_seconds=3600)
+
+                if not market_context["feed_health"]["is_healthy"]:
+                    log.warning(
+                        "Market-Feed degraded fuer %s: %s",
+                        pair,
+                        market_context.get("no_trade_reason", "unknown"),
+                    )
 
                 now = time.time()
                 if now - last_sentiment_time >= config.SENTIMENT_INTERVAL:
@@ -145,6 +155,7 @@ def run() -> None:
                 trade_signal = strategy.decide(
                     ta_result, last_sentiment, pair,
                     ta_result["indicators"]["price"], 0.1,
+                    market_context=market_context,
                 )
 
                 if trade_signal.confidence >= config.CONFIDENCE_THRESHOLD:

@@ -49,7 +49,33 @@ class MarketData:
             source="coingecko",
         )
         rows = [
-            {"open": p[1], "high": p[2], "low": p[3], "close": p[4], "volume": 0}
+            {
+                "timestamp": self._normalize_timestamp(p[0]),
+                "open": p[1],
+                "high": p[2],
+                "low": p[3],
+                "close": p[4],
+                "volume": 0,
+            }
             for p in resp.json()
         ]
         return pd.DataFrame(rows)
+
+    @staticmethod
+    def _normalize_timestamp(value) -> float | None:
+        try:
+            timestamp = float(value)
+        except (TypeError, ValueError):
+            return None
+
+        if timestamp <= 0:
+            return None
+        if timestamp > 1e11:
+            return timestamp / 1000.0
+        if timestamp > 1e9:
+            return timestamp
+        return None
+
+    @staticmethod
+    def _parse_timestamp(value) -> float | None:
+        return MarketData._normalize_timestamp(value)

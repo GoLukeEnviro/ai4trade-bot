@@ -68,6 +68,7 @@ class BitgetRestClient:
         rows = []
         for candle in raw:
             rows.append({
+                "timestamp": BitgetRestClient._parse_timestamp(candle[0]),
                 "open": float(candle[1]),
                 "high": float(candle[2]),
                 "low": float(candle[3]),
@@ -75,3 +76,18 @@ class BitgetRestClient:
                 "volume": float(candle[5]),
             })
         return pd.DataFrame(rows)
+
+    @staticmethod
+    def _parse_timestamp(value) -> float | None:
+        try:
+            timestamp = float(value)
+        except (TypeError, ValueError):
+            return None
+
+        if timestamp <= 0:
+            return None
+        if timestamp > 1e11:
+            return timestamp / 1000.0
+        if timestamp > 1e9:
+            return timestamp
+        return None

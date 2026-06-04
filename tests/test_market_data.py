@@ -20,6 +20,7 @@ def test_get_ohlcv_bitget():
     assert "high" in df.columns
     assert "low" in df.columns
     assert "volume" in df.columns
+    assert "timestamp" in df.columns
 
 
 @responses.activate
@@ -51,3 +52,4 @@ def test_coingecko_fallback_on_bitget_failure():
     assert df.iloc[0]["high"] == 50500.0
     assert df.iloc[0]["low"] == 49800.0
     assert df.iloc[0]["close"] == 50200.0
+    assert "timestamp" in df.columns

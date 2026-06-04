@@ -120,3 +120,31 @@ def test_sell_confidence_clamped_at_100():
 def test_default_sentiment_weight():
     s = Strategy()
     assert s.sentiment_weight == 0.3
+
+
+def test_market_context_can_increase_confidence():
+    s = Strategy(sentiment_weight=0.0)
+    ta = {"signal": "BUY", "strength": 60, "indicators": {}}
+    sentiment = {"score": 0.0, "confidence": 0.0}
+    market_context = {
+        "risk_off": False,
+        "confidence_adjustment": 6,
+        "feed_health": {"is_healthy": True},
+    }
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1, market_context=market_context)
+    assert result.action == "BUY"
+    assert result.confidence == 66
+
+
+def test_unhealthy_feed_forces_hold():
+    s = Strategy()
+    ta = {"signal": "BUY", "strength": 80, "indicators": {}}
+    sentiment = {"score": 0.5, "confidence": 0.5}
+    market_context = {
+        "risk_off": True,
+        "confidence_adjustment": -20,
+        "feed_health": {"is_healthy": False},
+    }
+    result = s.decide(ta, sentiment, "BTC/USDT", 65000.0, 0.1, market_context=market_context)
+    assert result.action == "HOLD"
+    assert result.quantity == 0
