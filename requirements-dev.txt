@@ -120,3 +120,7 @@ urllib3==2.7.0
     # via
     #   requests
     #   responses
+prometheus-fastapi-instrumentator>=7.0.0
+    # via prometheus http metrics
+prometheus-client>=0.21.0
+    # via prometheus custom metrics

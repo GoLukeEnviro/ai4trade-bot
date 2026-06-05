@@ -1,0 +1,46 @@
+# Rainbow Intelligence Engine — Configuration Template
+# Copy to rainbow.yml and customize
+
+log_level: INFO
+log_format: text  # text | json
+
+db_path: rainbow/storage/signals.db
+
+market_data:
+  bitget_base_url: https://api.bitget.com
+  coingecko_base_url: https://api.coingecko.com/api/v3
+  default_interval: 1h
+  default_candle_limit: 200
+
+api:
+  host: 0.0.0.0
+  port: 8000
+
+scorer:
+  weights:
+    technical: 0.4
+    sentiment: 0.3
+    social: 0.2
+    news: 0.1
+
+collectors:
+  ta:
+    enabled: true
+    interval_seconds: 60
+    assets:
+      - BTC
+      - ETH
+      - SOL
+    params:
+      timeframes:
+        - 1h
+        - 4h
+  # twitter:
+  #   enabled: false
+  #   interval_seconds: 120
+  # reddit:
+  #   enabled: false
+  #   interval_seconds: 300
+  # news:
+  #   enabled: false
+  #   interval_seconds: 300

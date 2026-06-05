@@ -10,3 +10,8 @@ storage/
 docs/
 *.md
 tests/
+.venv/
+*.log
+coverage/
+dist/
+*.egg-info/

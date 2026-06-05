@@ -1,0 +1,88 @@
+from datetime import UTC, datetime
+
+from rainbow.models.signal import CryptoSignal, Direction
+
+
+class RainbowScorer:
+    _DEFAULT_WEIGHTS: dict[str, float] = {
+        "technical": 0.4,
+        "sentiment": 0.3,
+        "social": 0.2,
+        "news": 0.1,
+    }
+
+    _DIRECTION_MULTIPLIER: dict[str, float] = {
+        "bullish": 1.0,
+        "neutral": 0.5,
+        "bearish": 0.0,
+    }
+
+    _DECAY_THRESHOLD_SECONDS = 3600
+    _DECAY_FACTOR = 0.7
+    _CROSS_SIGNAL_BOOST = 1.15
+
+    def __init__(
+        self,
+        weights: dict[str, float] | None = None,
+        decay_threshold_seconds: int = 3600,
+        decay_factor: float = 0.7,
+        cross_signal_boost: float = 1.15,
+    ):
+        self._weights = weights or self._DEFAULT_WEIGHTS
+        self._decay_threshold = decay_threshold_seconds
+        self._decay_factor = decay_factor
+        self._cross_signal_boost = cross_signal_boost
+
+    def score(self, signals: list[CryptoSignal]) -> list[CryptoSignal]:
+        """Berechne rainbow_score fuer eine Gruppe von Signalen desselben Assets."""
+        if not signals:
+            return signals
+
+        rainbow_score = self._compute_rainbow_score(signals)
+        return [
+            sig.model_copy(update={"rainbow_score": rainbow_score})
+            for sig in signals
+        ]
+
+    def _compute_rainbow_score(self, signals: list[CryptoSignal]) -> float:
+        now = datetime.now(UTC)
+        weighted_sum = 0.0
+        total_weight = 0.0
+
+        for sig in signals:
+            type_key = sig.signal_type.value
+            base_weight = self._weights.get(type_key, 0.1)
+
+            age_seconds = (now - sig.timestamp).total_seconds()
+            decay_periods = max(0, age_seconds - self._decay_threshold) / self._decay_threshold
+            decay = self._decay_factor ** decay_periods
+            weight = base_weight * (1.0 if decay_periods <= 0 else decay)
+
+            direction_value = sig.direction.value if sig.direction else "neutral"
+            multiplier = self._DIRECTION_MULTIPLIER.get(direction_value, 0.5)
+
+            weighted_sum += sig.strength * multiplier * weight
+            total_weight += weight
+
+        if total_weight <= 0:
+            return 0.0
+
+        base_score = weighted_sum / total_weight
+
+        boost = self._cross_signal_boost if self._has_cross_confirmation(signals) else 1.0
+
+        return round(min(1.0, base_score * boost), 3)
+
+    @staticmethod
+    def _has_cross_confirmation(signals: list[CryptoSignal]) -> bool:
+        """True wenn mindestens 2 verschiedene Quellen in dieselbe Richtung zeigen."""
+        directions_by_type: dict[str, Direction] = {}
+        for sig in signals:
+            if sig.direction and sig.direction != Direction.NEUTRAL:
+                directions_by_type[sig.signal_type.value] = sig.direction
+
+        if len(directions_by_type) < 2:
+            return False
+
+        unique_directions = set(directions_by_type.values())
+        return len(unique_directions) == 1
