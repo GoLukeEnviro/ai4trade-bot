@@ -16,16 +16,15 @@ class TestLoadYamlConfig:
     def test_load_yaml_valid(self, tmp_path):
         cfg = tmp_path / "config.yml"
         cfg.write_text(textwrap.dedent("""\
-            mode: dry_run
+            assets:
+              - BTC/USDT
             log_level: INFO
-            trading:
-              pairs: "BTC/USDT"
-              data_interval: 60
+            data_interval: 60
         """), encoding="utf-8")
         result = load_yaml_config(str(cfg))
-        assert result["mode"] == "dry_run"
-        assert result["trading"]["pairs"] == "BTC/USDT"
-        assert result["trading"]["data_interval"] == 60
+        assert result["assets"] == ["BTC/USDT"]
+        assert result["log_level"] == "INFO"
+        assert result["data_interval"] == 60
 
     def test_load_yaml_empty_file(self, tmp_path):
         cfg = tmp_path / "config.yml"
@@ -71,18 +70,16 @@ class TestApplyYamlToEnv:
             os.environ.pop("MODE")
 
     def test_apply_yaml_nested(self):
-        keys_to_clean = ["TRADING_PAIRS", "TRADING_DATA_INTERVAL"]
+        keys_to_clean = ["ASSETS", "DATA_INTERVAL"]
         for k in keys_to_clean:
             os.environ.pop(k, None)
         try:
             apply_yaml_to_env({
-                "trading": {
-                    "pairs": "BTC/USDT",
-                    "data_interval": 120,
-                }
+                "assets": "BTC/USDT",
+                "data_interval": 120,
             })
-            assert os.environ["TRADING_PAIRS"] == "BTC/USDT"
-            assert os.environ["TRADING_DATA_INTERVAL"] == "120"
+            assert os.environ["ASSETS"] == "BTC/USDT"
+            assert os.environ["DATA_INTERVAL"] == "120"
         finally:
             for k in keys_to_clean:
                 os.environ.pop(k, None)

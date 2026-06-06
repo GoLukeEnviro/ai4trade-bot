@@ -150,9 +150,8 @@ class TestConfigIntegration:
         for key in [
             "AI4TRADE_TOKEN", "CLAUDE_API_KEY", "LLM_API_KEY",
             "CLAUDE_MODEL", "LLM_PROVIDER", "LLM_MODEL", "LLM_BASE_URL",
-            "TRADING_PAIRS", "DATA_INTERVAL", "SENTIMENT_INTERVAL",
-            "HEARTBEAT_INTERVAL", "MAX_POSITION_PCT", "MAX_DRAWDOWN_PCT",
-            "MAX_OPEN_POSITIONS", "CONFIDENCE_THRESHOLD", "MODE",
+            "ASSETS", "DATA_INTERVAL", "SENTIMENT_INTERVAL",
+            "HEARTBEAT_INTERVAL", "CONFIDENCE_THRESHOLD",
             "LOG_LEVEL", "MAX_SIGNAL_QUEUE",
         ]:
             monkeypatch.delenv(key, raising=False)
@@ -167,11 +166,7 @@ class TestConfigIntegration:
         assert cfg.DATA_INTERVAL == 60
         assert cfg.SENTIMENT_INTERVAL == 300
         assert cfg.HEARTBEAT_INTERVAL == 30
-        assert cfg.MAX_POSITION_PCT == 0.10
-        assert cfg.MAX_DRAWDOWN_PCT == 0.20
-        assert cfg.MAX_OPEN_POSITIONS == 3
         assert cfg.CONFIDENCE_THRESHOLD == 60
-        assert cfg.MODE == "dry_run"
         assert cfg.LOG_LEVEL == "INFO"
         assert cfg.MAX_SIGNAL_QUEUE == 50
         assert cfg.BITGET_BASE == "https://api.bitget.com"

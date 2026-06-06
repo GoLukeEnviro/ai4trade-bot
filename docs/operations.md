@@ -100,19 +100,15 @@ Alle Konfiguration erfolgt ueber Umgebungsvariablen (`.env` Datei oder System-En
 | `VAULT_URL` | -- | HashiCorp Vault URL (nur bei `SECRET_BACKEND=vault`) |
 | `VAULT_TOKEN` | -- | Vault Token (nur bei `SECRET_BACKEND=vault`) |
 
-### 2.3 Trading-Konfiguration
+### 2.3 Signal-Konfiguration
 
 | Variable | Default | Beschreibung |
 |----------|---------|-------------|
-| `MODE` | `dry_run` | Betriebsmodus (NUR `dry_run` unterstuetzt) |
-| `TRADING_PAIRS` | `BTC/USDT,ETH/USDT,SOL/USDT` | Handelspaare (kommasepariert) |
+| `ASSETS` | `BTC/USDT,ETH/USDT,SOL/USDT` | Liste der beobachteten Assets |
 | `DATA_INTERVAL` | `60` | Marktdaten-Intervall in Sekunden |
 | `SENTIMENT_INTERVAL` | `300` | Sentiment-Update in Sekunden |
 | `HEARTBEAT_INTERVAL` | `30` | AI4Trade Heartbeat in Sekunden |
-| `MAX_POSITION_PCT` | `0.10` | Max 10% Cash pro Trade |
-| `MAX_DRAWDOWN_PCT` | `0.20` | Max 20% Drawdown -> Pause |
-| `MAX_OPEN_POSITIONS` | `3` | Max gleichzeitige Positionen |
-| `CONFIDENCE_THRESHOLD` | `60` | Min Confidence fuer Trade (0-100) |
+| `CONFIDENCE_THRESHOLD` | `60` | Minimaler Confidence-Schwellwert (0-100) |
 
 ### 2.4 Exchange-Konfiguration
 
@@ -186,9 +182,6 @@ scrape_configs:
 | `bot_signals_blocked_total` | Counter | pair, reason | Blockierte Signale |
 | `bot_api_latency_seconds` | Histogram | endpoint | API-Latenz |
 | `bot_api_errors_total` | Counter | endpoint | API-Fehler |
-| `bot_drawdown_pct` | Gauge | -- | Aktueller Drawdown |
-| `bot_open_positions` | Gauge | -- | Offene Positionen |
-| `bot_circuit_breaker_active` | Gauge | -- | Circuit Breaker Status (0/1) |
 | `bot_rate_limit_waits_total` | Counter | api | Rate-Limiter Wartezeiten |
 | `bot_uptime_seconds` | Gauge | -- | Bot-Uptime |
 | `bot_info` | Gauge | mode, version | Bot-Informationen |
@@ -333,7 +326,7 @@ receivers:
 | Symptom | Ursache | Loesung |
 |---------|---------|---------|
 | `AI4TRADE_TOKEN nicht gesetzt` | Fehlende `.env` | `.env` mit Token erstellen |
-| `Nur dry_run ist unterstuetzt` | `MODE` nicht auf `dry_run` | `MODE=dry_run` in `.env` |
+| `ASSETS nicht konfiguriert` | Fehlende Asset-Liste | `ASSETS=BTC/USDT,ETH/USDT` setzen |
 | `ModuleNotFoundError` | Fehlende Dependencies | `pip install -r requirements.txt` |
 | `Permission denied: storage/` | Fehlende Schreibrechte | `chmod 755 storage/` |
 
@@ -342,9 +335,8 @@ receivers:
 | Symptom | Ursache | Loesung |
 |---------|---------|---------|
 | Alle Signale sind HOLD | Confidence unter Threshold | `CONFIDENCE_THRESHOLD` senken oder Strategy pruefen |
-| Risk-Gate blockiert | Max-Position/Drawdown erreicht | Positionen pruefen, `MAX_OPEN_POSITIONS` pruefen |
-| Circuit Breaker aktiv | Anomalie erkannt | Logs pruefen, Circuit Breaker manuell deaktivieren |
-| Safety Gateway blockiert | Policy-Verletzung | Audit-Log pruefen, Policy-Konfiguration pruefen |
+| Signale werden nicht gepublished | API-Fehler oder Queue-Problem | Logs prüfen, AI4Trade API-Verbindung testen |
+| Publisher-Warteschlange voll | `MAX_SIGNAL_QUEUE` erreicht | `MAX_SIGNAL_QUEUE` erhöhen oder Queue leeren |
 
 ### 7.3 API-Probleme
 

@@ -1,19 +1,15 @@
 # AI4Trade Bot Configuration (Optional)
 # .env überschreibt YAML-Werte bei Konflikten
 
-mode: dry_run
-log_level: INFO
-log_format: text
+assets:
+  - BTC/USDT
+  - ETH/USDT
+  - SOL/USDT
 
-trading:
-  pairs: "BTC/USDT,ETH/USDT,SOL/USDT"
-  data_interval: 60
-  sentiment_interval: 300
-  heartbeat_interval: 30
-  max_position_pct: 0.10
-  max_drawdown_pct: 0.20
-  max_open_positions: 3
-  confidence_threshold: 60
+data_interval: 60
+sentiment_interval: 300
+heartbeat_interval: 30
+confidence_threshold: 60
 
 exchange:
   provider: bitget

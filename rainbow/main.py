@@ -10,6 +10,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI
 
+from core.whimsy import create_formatter, print_whimsy_banner
 from rainbow.collectors.base import BaseCollector
 from rainbow.config.settings import RainbowSettings
 from rainbow.distribution import api as api_module
@@ -226,31 +227,7 @@ def setup_logging(level: str = "INFO", fmt: str = "text") -> None:
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(root.level)
-
-    if fmt == "json":
-        try:
-            import json as json_mod
-            from datetime import UTC, datetime
-
-            class _JsonFormatter(logging.Formatter):
-                def format(self, record: logging.LogRecord) -> str:
-                    payload = {
-                        "ts": datetime.now(UTC).isoformat(),
-                        "level": record.levelname,
-                        "logger": record.name,
-                        "msg": record.getMessage(),
-                    }
-                    return json_mod.dumps(payload, default=str)
-
-            handler.setFormatter(_JsonFormatter())
-        except Exception:
-            handler.setFormatter(
-                logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-            )
-    else:
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-        )
+    handler.setFormatter(create_formatter(fmt))
 
     root.addHandler(handler)
 
@@ -287,6 +264,7 @@ def main() -> None:
     config_path = Path("rainbow/config.yaml")
     settings = RainbowSettings.from_yaml(config_path)
 
+    print_whimsy_banner("Rainbow Intelligence Engine", "Signal-Storytelling in Farbe")
     setup_logging(level=settings.log_level, fmt=settings.log_format)
 
     app = create_engine(settings)

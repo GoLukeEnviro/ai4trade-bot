@@ -19,6 +19,8 @@ pip install -r requirements.txt
 # 3. Server starten
 python -m rainbow.main
 
+> Hinweis: `main.py` ist als einfacher Legacy-Signal-Producer erhalten. Für den produktiven Betrieb und die vollständige Rainbow-Pipeline wird `python -m rainbow.main` empfohlen.
+
 # 4. Signale abfragen
 curl http://localhost:8000/signals/latest?asset=BTC&limit=10
 ```
