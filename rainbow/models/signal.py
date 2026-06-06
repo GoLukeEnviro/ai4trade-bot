@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from rainbow.evaluation.models import AIEvaluation
+
 
 class SignalType(str, Enum):
     TECHNICAL = "technical"
@@ -38,3 +40,4 @@ class CryptoSignal(BaseModel):
     raw_data: dict | None = None
     metadata: dict = Field(default_factory=dict)
     rainbow_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    ai_evaluation: AIEvaluation | None = None

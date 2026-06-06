@@ -31,17 +31,19 @@ class SignalStore:
                 value REAL,
                 raw_data TEXT,
                 metadata TEXT,
-                rainbow_score REAL
+                rainbow_score REAL,
+                ai_evaluation TEXT
             )
         """)
         await self._conn.commit()
 
     async def save(self, signal: CryptoSignal) -> None:
+        ai_eval_json = json.dumps(signal.ai_evaluation.model_dump()) if signal.ai_evaluation else None
         await self._conn.execute(
             """INSERT OR IGNORE INTO signals
                (signal_id, timestamp, source, asset, signal_type, direction,
-                strength, confidence, value, raw_data, metadata, rainbow_score)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                strength, confidence, value, raw_data, metadata, rainbow_score, ai_evaluation)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 signal.signal_id,
                 signal.timestamp.isoformat(),
@@ -55,6 +57,7 @@ class SignalStore:
                 json.dumps(signal.raw_data) if signal.raw_data else None,
                 json.dumps(signal.metadata) if signal.metadata else None,
                 signal.rainbow_score,
+                ai_eval_json,
             ),
         )
         await self._conn.commit()

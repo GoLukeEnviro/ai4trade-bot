@@ -15,6 +15,7 @@ from rainbow.collectors.base import BaseCollector
 from rainbow.config.settings import RainbowSettings
 from rainbow.distribution import api as api_module
 from rainbow.processor.scorer import RainbowScorer
+from rainbow.evaluation.llm_evaluator import LLMEvaluator
 from rainbow.processor.store import SignalStore
 from rainbow.market_data.bitget import BitgetClient
 from rainbow.distribution.webhooks import WebhookManager
@@ -50,12 +51,33 @@ class RainbowEngine:
         await self.store.start()
 
         self.scorer = RainbowScorer(self.settings.scorer.weights)
+        self._init_evaluator()
         self._build_collectors()
 
         self.webhooks = WebhookManager()
         api_module._webhook_manager = self.webhooks
 
         ACTIVE_COLLECTORS.set(len(self.collectors))
+
+    def _init_evaluator(self) -> None:
+        """KI-Evaluator initialisieren wenn konfiguriert."""
+        evaluation_cfg = getattr(self.settings, "evaluation", None)
+        if not evaluation_cfg or not getattr(evaluation_cfg, "enabled", False):
+            log.info("KI-Evaluation deaktiviert")
+            return
+        try:
+            evaluator = LLMEvaluator(
+                model=getattr(evaluation_cfg, "model", "deepseek-reasoner"),
+                temperature=getattr(evaluation_cfg, "temperature", 0.1),
+                timeout_seconds=getattr(evaluation_cfg, "timeout_seconds", 5.0),
+                threshold=getattr(evaluation_cfg, "threshold", 0.5),
+                cache_ttl_seconds=getattr(evaluation_cfg, "cache_ttl_seconds", 300),
+            )
+            self.scorer._evaluator = evaluator
+            self.scorer._evaluation_threshold = getattr(evaluation_cfg, "threshold", 0.5)
+            log.info("KI-Evaluator initialisiert (model=%s)", evaluator._model)
+        except Exception as exc:
+            log.warning("KI-Evaluator konnte nicht initialisiert werden: %s", exc)
 
         log.info(
             "RainbowEngine initialisiert: %d Collector(s)",
@@ -182,7 +204,7 @@ async def _run_collector_loop(
             if signals:
                 for sig in signals:
                     SIGNALS_COLLECTED.labels(collector=collector.name, asset=sig.asset).inc()
-                scored = scorer.score(signals)
+                scored = await scorer.score_and_evaluate(signals)
                 for sig in scored:
                     SIGNALS_SCORED.labels(asset=sig.asset).inc()
                     await store.save(sig)

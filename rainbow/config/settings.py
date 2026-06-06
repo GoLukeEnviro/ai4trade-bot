@@ -37,6 +37,15 @@ class ApiConfig(BaseModel):
     port: int = Field(default=8000, ge=1, le=65535)
 
 
+class EvaluationConfig(BaseModel):
+    enabled: bool = False
+    model: str = "deepseek-reasoner"
+    temperature: float = 0.1
+    timeout_seconds: float = 5.0
+    threshold: float = 0.5
+    cache_ttl_seconds: int = 300
+
+
 class MarketDataConfig(BaseModel):
     bitget_base_url: str = "https://api.bitget.com"
     coingecko_base_url: str = "https://api.coingecko.com/api/v3"
@@ -58,6 +67,8 @@ class RainbowSettings(BaseSettings):
     api: ApiConfig = Field(default_factory=ApiConfig)
 
     scorer: ScorerConfig = Field(default_factory=ScorerConfig)
+
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
 
     collectors: dict[str, CollectorConfig] = Field(
         default_factory=lambda: {

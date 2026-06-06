@@ -45,6 +45,11 @@ Rainbow folgt dem Prinzip "Collect → Score → Distribute". Alle Collectors pr
          │ CryptoSignal mit rainbow_score (0.0-1.0)
          ▼
 ┌─────────────────┐
+│ AI Evaluation   │  DeepSeek V4 Pro (optional, async)
+└────────┬────────┘
+         │ CryptoSignal + ai_evaluation (optional)
+         ▼
+┌─────────────────┐
 │  SQLite Store  │  Persistenz, Query, Filter
 └────────┬────────┘
          │
@@ -72,6 +77,7 @@ class CryptoSignal(BaseModel):
     raw_data: dict | None       # Originaldaten
     metadata: dict              # Collectorspezifisch
     rainbow_score: float        # 0.0-1.0 (berechnet durch RainbowScorer)
+    ai_evaluation: AIEvaluation | None  # Optional: AI-Bewertung durch DeepSeek
 ```
 
 ### Rainbow Score (0.0-1.0)
@@ -83,6 +89,36 @@ Der Score kombiniert alle Signale eines Assets zu einem einzigen Bewertungswert:
 - **Cross-Signal Confirmation**: TA bullish + Sentiment bullish = 15% Score-Boost
 
 Beispiel: BTC mit RSI-Untenverkauft (0.8 strength) + Twitter FOMO (0.6 strength) → rainbow_score ≈ 0.75
+
+### AI Evaluation Layer (Optional)
+
+Das AI Evaluation Layer ist eine optionale asynchrone Stufe zwischen RainbowScorer und SignalStore. Es evaluiert Trading-Signale mit DeepSeek V4 Pro (`deepseek-reasoner`) nach qualitativen Kriterien.
+
+**Funktionsweise:**
+- **Threshold-Filter:** Nur Signale mit rainbow_score >= 0.5 werden evaluiert (geringe Latenz)
+- **Asynchrone Ausführung:** LLM-Aufrufe laufen non-blocking via asyncio.gather
+- **Graceful Degradation:** Timeout (5s) oder Exception → ai_evaluation bleibt None, Signal läuft normal weiter
+- **In-Memory Cache:** LRU-Cache (TTL 300s, max 500 Einträge) reduziert LLM-Aufrufe
+
+**AIEvaluation-Modell:**
+```python
+class AIEvaluation(BaseModel):
+    ai_confidence: float      # 0.0-1.0, AI-Zuverlässigkeit
+    risk_level: str           # "low", "medium", "high"
+    market_regime: str        # "trending", "ranging", "volatile"
+    reasoning: str            # Begründung (max 200 Zeichen)
+```
+
+**Konfiguration (rainbow.yml):**
+```yaml
+evaluation:
+  enabled: false
+  model: deepseek-reasoner
+  temperature: 0.1
+  timeout_seconds: 5.0
+  threshold: 0.5
+  cache_ttl_seconds: 300
+```
 
 ---
 
@@ -217,6 +253,14 @@ scorer:
     sentiment: 0.3
     social: 0.2
     news: 0.1
+
+evaluation:
+  enabled: false
+  model: deepseek-reasoner
+  temperature: 0.1
+  timeout_seconds: 5.0
+  threshold: 0.5
+  cache_ttl_seconds: 300
 
 collectors:
   ta:
@@ -367,13 +411,13 @@ ruff format rainbow/
 
 ```bash
 # Alle Tests
-pytest rainbow/tests/
+pytest rainbow/tests/ tests/evaluation/ tests/core/
 
 # Spezifischer Test
 pytest rainbow/tests/test_models.py -v
 
 # Mit Coverage
-pytest rainbow/tests/ --cov=rainbow --cov-report=term
+pytest rainbow/tests/ tests/evaluation/ tests/core/ --cov=rainbow --cov-report=term
 ```
 
 ---

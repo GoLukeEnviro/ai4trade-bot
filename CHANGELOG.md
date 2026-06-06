@@ -7,11 +7,40 @@ und dieses Projekt hält sich zur semantischen Versionierung an [Semantic Versio
 
 ## [Unreleased]
 
+### Added
+
+**AI Evaluation Layer**
+- `rainbow/evaluation/` Package mit DeepSeek V4 Pro Integration (6 Dateien)
+- LLMEvaluator: Async LLM-Aufrufe via OpenAI-compatible API (deepseek-reasoner, timeout 5s)
+- EvaluationCache: In-Memory LRU-Cache (TTL 300s, max 500 Eintraege)
+- AIEvaluation-Modell: ai_confidence, risk_level, market_regime, reasoning
+- Threshold-Filter: Nur Signale mit rainbow_score >= 0.5 werden evaluiert
+- Graceful Degradation: Timeout/Exception → ai_evaluation = None, Signal laeuft durch
+- RainbowScorer.score_and_evaluate(): Async-Methode mit asyncio.gather (score() bleibt sync)
+- EvaluationConfig in Settings mit allen Parametern
+- SignalStore: ai_evaluation als JSON persistiert
+- 6 Evaluation-Tests (success, threshold, timeout, malformed JSON, cache hit, exception)
+
+**Predictive Feature Pipeline**
+- `core/feature_pipeline.py`: FeaturePipeline mit returns, log_returns, volatility, RSI, cyclical encoding, VWAP
+- `core/predictive.py`: PredictiveEngine Wrapper (XGBoost-ready, graceful wenn kein Modell)
+- Fear & Greed Index Integration via Alternative.me API
+- `models/predictive/.gitkeep` fuer zukuenftige Modell-Ablage
+- 8 Feature Pipeline Tests (build_features, cyclical range, empty data, fear_greed graceful, predictive graceful)
+
+**Dokumentation**
+- `docs/ai-evaluation-layer-research.md`: Forschungsbericht mit Architektur, Modellvergleich, 3-Phasen-Roadmap
+
+### Changed
+- Datenfluss: Collectors → Scorer → [AI Evaluation] → Store → Distribution
+- rainbow/main.py: Scorer-Aufruf gewechselt zu score_and_evaluate()
+- CryptoSignal-Modell: Neues optionales Feld ai_evaluation
+
 ### Geplant
 - Live-Trading Implementierung (nach Sicherheitsaudit)
 - FreqTrade Integration (PrimoDigi Bridge)
-- Erweiterte Chat-Kommandos
-- Performance-Monitoring und Metriken
+- XGBoost Modell-Training (Phase 2)
+- Multi-LLM Ensemble (Phase 3)
 
 ## [0.1.0] - 2026-05-07
 

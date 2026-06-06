@@ -1,6 +1,17 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from rainbow.models.signal import CryptoSignal, Direction
+
+if TYPE_CHECKING:
+    from rainbow.evaluation.llm_evaluator import LLMEvaluator
+
+logger = logging.getLogger(__name__)
 
 
 class RainbowScorer:
@@ -27,11 +38,15 @@ class RainbowScorer:
         decay_threshold_seconds: int = 3600,
         decay_factor: float = 0.7,
         cross_signal_boost: float = 1.15,
+        evaluator: LLMEvaluator | None = None,
+        evaluation_threshold: float = 0.5,
     ):
         self._weights = weights or self._DEFAULT_WEIGHTS
         self._decay_threshold = decay_threshold_seconds
         self._decay_factor = decay_factor
         self._cross_signal_boost = cross_signal_boost
+        self._evaluator = evaluator
+        self._evaluation_threshold = evaluation_threshold
 
     def score(self, signals: list[CryptoSignal]) -> list[CryptoSignal]:
         """Berechne rainbow_score fuer eine Gruppe von Signalen desselben Assets."""
@@ -43,6 +58,32 @@ class RainbowScorer:
             sig.model_copy(update={"rainbow_score": rainbow_score})
             for sig in signals
         ]
+
+    async def score_and_evaluate(self, signals: list[CryptoSignal]) -> list[CryptoSignal]:
+        """Score + optionale KI-Evaluierung. Async Wrapper fuer die Pipeline."""
+        scored = self.score(signals)
+        if not self._evaluator:
+            return scored
+
+        results = await asyncio.gather(
+            *[self._evaluate_single(sig) for sig in scored],
+            return_exceptions=True,
+        )
+        evaluated: list[CryptoSignal] = []
+        for i, result in enumerate(results):
+            if isinstance(result, CryptoSignal):
+                evaluated.append(result)
+            else:
+                if isinstance(result, Exception):
+                    logger.warning("Evaluation failed for %s: %s", scored[i].asset, result)
+                evaluated.append(scored[i])
+        return evaluated
+
+    async def _evaluate_single(self, signal: CryptoSignal) -> CryptoSignal:
+        if (signal.rainbow_score or 0.0) < self._evaluation_threshold:
+            return signal
+        evaluation = await self._evaluator.evaluate(signal)
+        return signal.model_copy(update={"ai_evaluation": evaluation})
 
     def _compute_rainbow_score(self, signals: list[CryptoSignal]) -> float:
         now = datetime.now(UTC)
