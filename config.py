@@ -44,3 +44,6 @@ AI4TRADE_BASE = "https://ai4trade.ai/api"
 CRYPTOCOMPARE_BASE = "https://min-api.cryptocompare.com/data/v2"
 
 METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
+
+# Rainbow Engine integration
+RAINBOW_API_URL = os.getenv("RAINBOW_API_URL", "http://localhost:8000")

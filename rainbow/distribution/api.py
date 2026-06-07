@@ -81,6 +81,41 @@ def _register_routes(app: FastAPI) -> None:
             raise HTTPException(status_code=404, detail=f"Signal '{signal_id}' not found")
         return signal
 
+    @app.post("/signals/ingest")
+    async def signals_ingest(body: dict[str, Any]) -> dict[str, Any]:
+        """Internal endpoint: accept external signals (e.g. from legacy strategy)."""
+        if _store is None:
+            raise HTTPException(status_code=503, detail="Signal store not ready")
+
+        from rainbow.models.signal import CryptoSignal, Direction, SignalType
+
+        try:
+            signal_type_raw = body.get("signal_type", "technical")
+            signal_type = SignalType(signal_type_raw)
+        except ValueError:
+            signal_type = SignalType.TECHNICAL
+
+        try:
+            direction_raw = body.get("direction", "neutral")
+            direction = Direction(direction_raw)
+        except ValueError:
+            direction = Direction.NEUTRAL
+
+        sig = CryptoSignal(
+            source=body.get("source", "external"),
+            asset=body.get("asset", "UNKNOWN"),
+            signal_type=signal_type,
+            direction=direction,
+            strength=float(body.get("strength", 0.0)),
+            confidence=float(body.get("confidence", 0.0)),
+            value=body.get("value"),
+            raw_data=body.get("raw_data"),
+            metadata=body.get("metadata", {}),
+        )
+
+        await _store.save(sig)
+        return {"status": "ok", "signal_id": sig.signal_id}
+
     @app.get("/metrics")
     async def metrics() -> dict[str, Any]:
         if _store is None:

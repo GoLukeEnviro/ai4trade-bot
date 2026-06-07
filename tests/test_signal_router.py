@@ -76,3 +76,54 @@ def test_signal_router_does_not_instantiate_ai4trade_client():
     router = SignalRouter(publisher=MagicMock())
     assert not hasattr(router, "_client")
     assert hasattr(router, "_publisher")
+
+
+def test_route_buy_to_rainbow_api_calls_publish_and_returns_true():
+    mock_publisher = MagicMock()
+    mock_publisher.publish.return_value = True
+    mock_rainbow = MagicMock()
+    mock_rainbow.publish.return_value = True
+    router = SignalRouter(publisher=mock_publisher, rainbow_publisher=mock_rainbow)
+    signal = Signal(pair="BTC/USDT", action="BUY", confidence=75, price=65000.0, quantity=0.1)
+    success = router.route(signal, targets=["rainbow_api"])
+    assert success is True
+    mock_rainbow.publish.assert_called_once_with(signal)
+    mock_publisher.publish.assert_not_called()
+
+
+def test_rainbow_api_graceful_on_no_publisher(caplog):
+    mock_publisher = MagicMock()
+    mock_publisher.publish.return_value = True
+    router = SignalRouter(publisher=mock_publisher, rainbow_publisher=None)
+    signal = Signal(pair="BTC/USDT", action="BUY", confidence=75, price=65000.0, quantity=0.1)
+    success = router.route(signal, targets=["rainbow_api", "log"])
+    assert success is True
+    assert any("kein RainbowApiPublisher" in rec.message for rec in caplog.records)
+
+
+def test_rainbow_api_failure_does_not_block_other_targets():
+    mock_publisher = MagicMock()
+    mock_publisher.publish.return_value = True
+    mock_rainbow = MagicMock()
+    mock_rainbow.publish.return_value = False
+    router = SignalRouter(publisher=mock_publisher, rainbow_publisher=mock_rainbow)
+    signal = Signal(pair="BTC/USDT", action="BUY", confidence=75, price=65000.0, quantity=0.1)
+    success = router.route(signal, targets=["ai4trade", "rainbow_api"])
+    # ai4trade succeeds but rainbow fails — overall false because ai4trade success
+    # but rainbow failure is graceful (logged, not blocking)
+    mock_publisher.publish.assert_called_once()
+    mock_rainbow.publish.assert_called_once()
+
+
+def test_rainbow_api_and_ai4trade_both_targets():
+    mock_publisher = MagicMock()
+    mock_publisher.publish.return_value = True
+    mock_rainbow = MagicMock()
+    mock_rainbow.publish.return_value = True
+    router = SignalRouter(publisher=mock_publisher, rainbow_publisher=mock_rainbow)
+    signal = Signal(pair="BTC/USDT", action="BUY", confidence=80, price=65000.0, quantity=0.1)
+    success = router.route(signal, targets=["ai4trade", "rainbow_api", "log"])
+    assert success is True
+    mock_publisher.publish.assert_called_once()
+    mock_rainbow.publish.assert_called_once()
+

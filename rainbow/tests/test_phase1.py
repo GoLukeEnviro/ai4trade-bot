@@ -237,3 +237,55 @@ class TestAPI:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/signals/nonexistent")
             assert resp.status_code == 404
+
+    @pytest.mark.anyio
+    async def test_signals_ingest_creates_signal(self, app_and_store):
+        app, store = app_and_store
+        payload = {
+            "asset": "BTCUSDT",
+            "source": "legacy_strategy",
+            "signal_type": "technical",
+            "direction": "bullish",
+            "strength": 0.75,
+            "confidence": 0.80,
+            "value": 50000.0,
+            "raw_data": {"pair": "BTC/USDT"},
+            "metadata": {"confidence_raw": 80},
+        }
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/signals/ingest", json=payload)
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "ok"
+            assert "signal_id" in data
+
+            # Verify signal is retrievable via GET /signals/latest
+            resp2 = await client.get("/signals/latest")
+            assert resp2.status_code == 200
+            signals = resp2.json()
+            assert len(signals) == 1
+            assert signals[0]["asset"] == "BTCUSDT"
+
+    @pytest.mark.anyio
+    async def test_signals_ingest_with_invalid_direction_defaults_neutral(self, app_and_store):
+        app, store = app_and_store
+        payload = {
+            "asset": "ETHUSDT",
+            "source": "test",
+            "signal_type": "technical",
+            "direction": "sideways",
+            "strength": 0.5,
+            "confidence": 0.5,
+        }
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/signals/ingest", json=payload)
+            assert resp.status_code == 200
+
+    @pytest.mark.anyio
+    async def test_signals_ingest_minimal_payload(self, app_and_store):
+        app, store = app_and_store
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/signals/ingest", json={})
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "ok"

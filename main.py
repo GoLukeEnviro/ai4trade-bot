@@ -48,18 +48,21 @@ def graceful_shutdown(signum: int, frame) -> None:
 
 def _init_components() -> dict:
     from adapters.ai4trade_client import AI4TradeClient
+    from adapters.rainbow_publisher import RainbowApiPublisher
     from adapters.signal_publisher import SignalPublisher
     from storage.sqlite_repository import SqliteSignalRepository
 
     repository = SqliteSignalRepository(config.DB_PATH)
     client = AI4TradeClient()
     publisher = SignalPublisher(client=client, repository=repository)
+    rainbow_publisher = RainbowApiPublisher()
 
     return {
         "repository": repository,
         "client": client,
         "publisher": publisher,
-        "signal_router": SignalRouter(publisher=publisher),
+        "rainbow_publisher": rainbow_publisher,
+        "signal_router": SignalRouter(publisher=publisher, rainbow_publisher=rainbow_publisher),
         "market_data": MarketData(),
         "technical": TechnicalAnalyzer(),
         "market_signals": MarketSignalAnalyzer(),
@@ -107,8 +110,7 @@ def run() -> None:
     log.info("Assets: %s", config.ASSETS)
 
     if not config.AI4TRADE_TOKEN:
-        log.error("AI4TRADE_TOKEN nicht gesetzt. Beende.")
-        return
+        log.warning("AI4TRADE_TOKEN nicht gesetzt — laeuft im Rainbow-only Modus")
 
     components = _init_components()
     repository = components["repository"]
@@ -160,7 +162,7 @@ def run() -> None:
                 )
 
                 if trade_signal.confidence >= config.CONFIDENCE_THRESHOLD:
-                    signal_router.route(trade_signal, targets=["ai4trade", "log"])
+                    signal_router.route(trade_signal, targets=["rainbow_api", "log"])
 
             task_handler.process_pending()
             publisher.flush_queue()
