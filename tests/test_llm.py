@@ -28,13 +28,13 @@ class TestCreateProvider:
     @patch.object(llm_module, "config", MagicMock(LLM_PROVIDER="claude", CLAUDE_API_KEY="k", CLAUDE_MODEL="m"))
     @patch("core.llm.ClaudeProvider")
     def test_create_provider_explicit_claude(self, mock_claude):
-        provider = llm_module.create_provider(provider="claude")
+        llm_module.create_provider(provider="claude")
         mock_claude.assert_called_once()
 
     @patch.object(llm_module, "config", MagicMock(LLM_PROVIDER="claude", CLAUDE_API_KEY="k", CLAUDE_MODEL="m"))
     @patch("core.llm.OpenAICompatibleProvider")
     def test_create_provider_explicit_openai_overrides_config(self, mock_openai):
-        provider = llm_module.create_provider(provider="openai")
+        llm_module.create_provider(provider="openai")
         mock_openai.assert_called_once()
 
 

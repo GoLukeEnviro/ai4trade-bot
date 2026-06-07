@@ -1,7 +1,6 @@
 import logging
 
 import config
-
 from ai.providers.claude_provider import ClaudeProvider
 from ai.providers.openai_provider import OpenAICompatibleProvider
 

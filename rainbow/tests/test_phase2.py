@@ -2,7 +2,7 @@ import pytest
 
 from rainbow.collectors.reddit_collector import RedditCollector
 from rainbow.collectors.twitter_collector import TwitterCollector
-from rainbow.models.signal import CryptoSignal, Direction, SignalType
+from rainbow.models.signal import Direction, SignalType
 
 
 class TestTwitterCollector:
@@ -21,8 +21,10 @@ class TestTwitterCollector:
 
     def test_analyze_bullish_tweets(self, collector):
         tweets = [
-            {"text": "Bitcoin is extremely bullish right now! Time to buy!", "public_metrics": {"like_count": 50, "retweet_count": 10}},
-            {"text": "BTC rally incoming, accumulation phase", "public_metrics": {"like_count": 30, "retweet_count": 5}},
+            {"text": "Bitcoin is extremely bullish right now! Time to buy!",
+             "public_metrics": {"like_count": 50, "retweet_count": 10}},
+            {"text": "BTC rally incoming, accumulation phase",
+             "public_metrics": {"like_count": 30, "retweet_count": 5}},
             {"text": "Just another day in crypto", "public_metrics": {"like_count": 5, "retweet_count": 1}},
         ]
         signal = collector._analyze_tweets(tweets, "BTC")
@@ -36,8 +38,10 @@ class TestTwitterCollector:
 
     def test_analyze_bearish_tweets(self, collector):
         tweets = [
-            {"text": "Bitcoin crash incoming, time to sell everything", "public_metrics": {"like_count": 20, "retweet_count": 3}},
-            {"text": "Market dump, bearish signals everywhere", "public_metrics": {"like_count": 15, "retweet_count": 2}},
+            {"text": "Bitcoin crash incoming, time to sell everything",
+             "public_metrics": {"like_count": 20, "retweet_count": 3}},
+            {"text": "Market dump, bearish signals everywhere",
+             "public_metrics": {"like_count": 15, "retweet_count": 2}},
         ]
         signal = collector._analyze_tweets(tweets, "BTC")
         assert signal is not None
@@ -116,7 +120,6 @@ class TestRedditCollector:
 
     @pytest.mark.anyio
     async def test_collect_with_mocked_api(self, collector):
-        import json
         from unittest.mock import AsyncMock, patch
 
         mock_response = type("Response", (), {

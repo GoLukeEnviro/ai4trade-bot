@@ -1,6 +1,6 @@
 # tests/test_strategy.py
-from core.strategy import Strategy
 from core.signal_model import Signal
+from core.strategy import Strategy
 
 
 def test_bullish_ta_with_positive_sentiment():

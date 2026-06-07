@@ -38,7 +38,8 @@ def create_app(store: Any, settings: Any, engine: Any = None, enable_metrics: bo
     _register_routes(app)
 
     if enable_metrics:
-        from prometheus_fastapi_instrumentator import Instrumentator, metrics as instr_metrics
+        from prometheus_fastapi_instrumentator import Instrumentator
+        from prometheus_fastapi_instrumentator import metrics as instr_metrics
         Instrumentator().add(
             instr_metrics.default(metric_namespace="rainbow"),
         ).instrument(app).expose(app, endpoint="/metrics/prometheus", include_in_schema=False)

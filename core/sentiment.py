@@ -1,14 +1,14 @@
 # Backward-compatible re-exports — Logik lebt in ai/sentiment
 import sys
 
-from ai.sentiment import SentimentAnalyzer
 from ai.providers import create_provider as _original_create_provider
+from ai.sentiment import SentimentAnalyzer as SentimentAnalyzer  # noqa: E402
 
 # Standardmaessig das echte create_provider. Tests patchen core.sentiment.create_provider.
 create_provider = _original_create_provider
 
 # Proxy: ai.sentiment.create_provider delegiert an core.sentiment.create_provider.
-import ai.sentiment as _ai_sentiment
+import ai.sentiment as _ai_sentiment  # noqa: E402
 
 
 def _create_provider_proxy(*args, **kwargs):

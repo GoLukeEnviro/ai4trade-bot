@@ -3,7 +3,6 @@ import logging
 
 from ai.providers import LLMProvider, create_provider
 from core.signal_model import Intent
-import config
 
 log = logging.getLogger(__name__)
 

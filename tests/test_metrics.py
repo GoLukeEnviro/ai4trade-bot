@@ -1,5 +1,4 @@
 import pytest
-from prometheus_client import CollectorRegistry, REGISTRY
 
 from core.metrics import (
     API_LATENCY_SECONDS,

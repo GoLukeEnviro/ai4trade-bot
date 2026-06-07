@@ -1,9 +1,10 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from core.secret_provider import create_secret_provider
+from core.secret_provider import create_secret_provider  # noqa: E402
 
 _secret_provider = create_secret_provider()
 

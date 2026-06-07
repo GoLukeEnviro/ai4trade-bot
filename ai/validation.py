@@ -1,4 +1,4 @@
-from ai.guardrails import clamp_score, clamp_confidence
+from ai.guardrails import clamp_confidence, clamp_score
 
 
 def validate_sentiment_response(data: dict) -> dict:

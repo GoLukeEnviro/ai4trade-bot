@@ -2,11 +2,11 @@ import logging
 
 import requests
 
+import config
+from ai.guardrails import safe_json_parse
 from ai.providers import LLMProvider
 from ai.providers import create_provider as _default_create_provider
-from ai.guardrails import safe_json_parse
 from ai.validation import validate_sentiment_response
-import config
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +14,9 @@ log = logging.getLogger(__name__)
 create_provider = _default_create_provider
 
 SENTIMENT_PROMPT = """Analyze the cryptocurrency market sentiment from these news headlines.
-Return ONLY a JSON object: {{"score": <float -1.0 to 1.0>, "confidence": <float 0.0 to 1.0>, "summary": "<brief summary>"}}
+Return ONLY a JSON object:
+{{"score": <float -1.0 to 1.0>, "confidence": <float 0.0 to 1.0>,
+ "summary": "<brief summary>"}}
 Negative score = bearish, positive = bullish, 0 = neutral.
 
 News:

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
-from core.signal_model import Signal
 from adapters.signal_publisher import SignalPublisher
+from core.signal_model import Signal
 
 
 def test_publish_success():

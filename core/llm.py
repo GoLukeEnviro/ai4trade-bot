@@ -14,9 +14,8 @@ class _ConfigProxy:
 
 config = _original_config
 
-from ai.providers.base import LLMProvider
-from ai.providers import claude_provider as _claude_mod
-from ai.providers import openai_provider as _openai_mod
+from ai.providers import claude_provider as _claude_mod  # noqa: E402
+from ai.providers import openai_provider as _openai_mod  # noqa: E402
 
 # Provider-Module nutzen den Proxy, damit Patches auf core.llm.config greifen.
 _proxy = _ConfigProxy()

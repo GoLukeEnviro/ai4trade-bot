@@ -6,5 +6,10 @@ scrape_configs:
     static_configs:
       - targets: ["bot:9090"]
 
+  - job_name: "rainbow-engine"
+    static_configs:
+      - targets: ["rainbow:8000"]
+    metrics_path: "/metrics/prometheus"
+
 rule_files:
   - "alertmanager_rules.yml"

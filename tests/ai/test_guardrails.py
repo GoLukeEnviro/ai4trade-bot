@@ -1,4 +1,4 @@
-from ai.guardrails import clamp_score, clamp_confidence, safe_json_parse
+from ai.guardrails import clamp_confidence, clamp_score, safe_json_parse
 
 
 def test_clamp_score_normal_range():

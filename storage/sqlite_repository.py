@@ -4,7 +4,6 @@ import json
 import logging
 import sqlite3
 import threading
-from typing import Any
 
 from core.signal_model import Signal
 from storage.repository import SignalRepository
@@ -58,7 +57,8 @@ class SqliteSignalRepository(SignalRepository):
         with self._lock:
             cur = self._conn.cursor()
             cur.execute(
-                """INSERT INTO signals (pair, action, confidence, price, quantity, mode, timestamp, trace_id, correlation_id)
+                """INSERT INTO signals (pair, action, confidence, price,
+                   quantity, mode, timestamp, trace_id, correlation_id)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (signal.pair, signal.action, signal.confidence, signal.price,
                  signal.quantity, signal.mode, signal.timestamp, trace_id, correlation_id),

@@ -1,6 +1,6 @@
 # core/signal_model.py
-from dataclasses import dataclass, asdict
 import time
+from dataclasses import asdict, dataclass
 
 
 @dataclass(frozen=True)

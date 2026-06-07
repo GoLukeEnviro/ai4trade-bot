@@ -11,3 +11,5 @@ dist/
 build/
 .venv/
 .pytest_cache/
+models/predictive/*.json
+models/predictive/*.txt

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import ssl
 import hashlib
 import logging
-from pathlib import Path
+import ssl
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +46,6 @@ class CertificatePinning:
     @staticmethod
     def get_certificate_fingerprint(hostname: str, port: int = 443) -> str:
         """Fingerprint eines Zertifikats abrufen (fuer Setup)."""
-        import socket
         conn = ssl.create_connection((hostname, port))
         try:
             cert = conn.getpeercert(binary_form=True)

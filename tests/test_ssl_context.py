@@ -1,7 +1,5 @@
-import ssl
 import hashlib
-
-import pytest
+import ssl
 
 from core.ssl_context import CertificatePinning
 

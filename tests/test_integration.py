@@ -2,10 +2,10 @@
 from unittest.mock import MagicMock
 
 from core.signal_model import Signal
-from core.technical import TechnicalAnalyzer
 from core.strategy import Strategy
-from trading.signal_router import SignalRouter
+from core.technical import TechnicalAnalyzer
 from tests.fixtures.ohlcv_fixtures import make_ohlcv
+from trading.signal_router import SignalRouter
 
 
 def test_full_signal_pipeline():
@@ -63,17 +63,6 @@ def test_hold_signal_not_routed():
 
 def test_all_modules_import():
     """Alle Signal-Pipeline-Module lassen sich fehlerfrei importieren."""
-    from core.signal_model import Signal, Intent
-    from core.market_data import MarketData
-    from core.technical import TechnicalAnalyzer
-    from core.sentiment import SentimentAnalyzer
-    from core.strategy import Strategy
-    from adapters.ai4trade_client import AI4TradeClient
-    from adapters.signal_publisher import SignalPublisher
-    from adapters.heartbeat import Heartbeat
-    from adapters.task_handler import TaskHandler
-    from trading.signal_router import SignalRouter
-    from chat.commander import Commander
 
 
 def test_main_import_does_not_start_runtime():
