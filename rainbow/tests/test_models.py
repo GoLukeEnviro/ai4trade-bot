@@ -106,12 +106,18 @@ class TestCryptoSignal:
 
     def test_unique_signal_ids(self):
         sig1 = CryptoSignal(
-            source="test", asset="BTC",
-            signal_type=SignalType.TECHNICAL, strength=0.5, confidence=0.5,
+            source="test",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            strength=0.5,
+            confidence=0.5,
         )
         sig2 = CryptoSignal(
-            source="test", asset="BTC",
-            signal_type=SignalType.TECHNICAL, strength=0.5, confidence=0.5,
+            source="test",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            strength=0.5,
+            confidence=0.5,
         )
         assert sig1.signal_id != sig2.signal_id
 

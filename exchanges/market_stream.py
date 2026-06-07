@@ -44,10 +44,7 @@ class BitgetWebSocketStream:
     """
 
     def __init__(self):
-        raise NotImplementedError(
-            "Bitget WebSocket ist noch nicht implementiert. "
-            "Nutze BitgetRestClient als Fallback."
-        )
+        raise NotImplementedError("Bitget WebSocket ist noch nicht implementiert. Nutze BitgetRestClient als Fallback.")
 
     def subscribe(self, symbol: str, callback=None) -> None:
         raise NotImplementedError

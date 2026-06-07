@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
@@ -14,31 +16,31 @@ from rainbow.models.signal import CryptoSignal, Direction, SignalType
 log = logging.getLogger(__name__)
 
 # --- RSI-Schwellenwerte ---
-RSI_OVERSOLD = 30       # Starker Bullen-Impuls bei Ueberverkauft
-RSI_OVERBOUGHT = 70     # Starker Baeren-Impuls bei Ueberkauft
-RSI_WEAK_BEAR = 55      # Leicht baerisch oberhalb dieser Schwelle
-RSI_WEAK_BULL = 45      # Leicht bullisch unterhalb dieser Schwelle
+RSI_OVERSOLD = 30  # Starker Bullen-Impuls bei Ueberverkauft
+RSI_OVERBOUGHT = 70  # Starker Baeren-Impuls bei Ueberkauft
+RSI_WEAK_BEAR = 55  # Leicht baerisch oberhalb dieser Schwelle
+RSI_WEAK_BULL = 45  # Leicht bullisch unterhalb dieser Schwelle
 
 # --- MACD-Scoring ---
-MACD_BULL_SIGNAL_BOOST = 25   # MACD ueber Signal + Histogram positiv
-MACD_BEAR_SIGNAL_BOOST = 25   # MACD unter Signal + Histogram negativ
-MACD_BULL_DECAY = 10          # MACD positiv aber Histogram negativ (Momentum schwindet)
-MACD_BULL_REVERSAL = 5        # MACD negativ aber Histogram positiv (Wende nach oben)
+MACD_BULL_SIGNAL_BOOST = 25  # MACD ueber Signal + Histogram positiv
+MACD_BEAR_SIGNAL_BOOST = 25  # MACD unter Signal + Histogram negativ
+MACD_BULL_DECAY = 10  # MACD positiv aber Histogram negativ (Momentum schwindet)
+MACD_BULL_REVERSAL = 5  # MACD negativ aber Histogram positiv (Wende nach oben)
 
 # --- EMA-Trend-Scoring ---
-EMA_STRONG_BULL_BOOST = 20    # Preis > EMA50 > EMA200 (starker Aufwaertstrend)
-EMA_STRONG_BEAR_BOOST = 20    # Preis < EMA50 < EMA200 (starker Abwaertstrend)
-EMA_MILD_BULL_BOOST = 10      # Preis > EMA50 (ohne EMA200-Bestaetigung)
-EMA_MILD_BEAR_BOOST = 10      # Preis < EMA50 (ohne EMA200-Bestaetigung)
+EMA_STRONG_BULL_BOOST = 20  # Preis > EMA50 > EMA200 (starker Aufwaertstrend)
+EMA_STRONG_BEAR_BOOST = 20  # Preis < EMA50 < EMA200 (starker Abwaertstrend)
+EMA_MILD_BULL_BOOST = 10  # Preis > EMA50 (ohne EMA200-Bestaetigung)
+EMA_MILD_BEAR_BOOST = 10  # Preis < EMA50 (ohne EMA200-Bestaetigung)
 
 # --- Bollinger-Band-Scoring ---
-BB_OVERSOLD_BOOST = 15        # Preis an unterem Band = potenzieller Long-Einstieg
-BB_OVERBOUGHT_BOOST = 15      # Preis an oberem Band = potenzieller Short-Einstieg
+BB_OVERSOLD_BOOST = 15  # Preis an unterem Band = potenzieller Long-Einstieg
+BB_OVERBOUGHT_BOOST = 15  # Preis an oberem Band = potenzieller Short-Einstieg
 
 # --- Basis- und Schwellenwerte ---
-BASE_STRENGTH = 50     # Neutraler Startwert
-BUY_THRESHOLD = 65     # Ueberhalb = Kaufsignal
-SELL_THRESHOLD = 35    # Unterhalb = Verkaufssignal
+BASE_STRENGTH = 50  # Neutraler Startwert
+BUY_THRESHOLD = 65  # Ueberhalb = Kaufsignal
+SELL_THRESHOLD = 35  # Unterhalb = Verkaufssignal
 
 _MIN_CANDLES = 50
 

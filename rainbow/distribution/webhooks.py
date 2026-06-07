@@ -87,7 +87,10 @@ class WebhookManager:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _deliver(
-        self, sub_id: str, sub: WebhookSubscription, payload: str,
+        self,
+        sub_id: str,
+        sub: WebhookSubscription,
+        payload: str,
     ) -> None:
         headers = {"Content-Type": "application/json"}
         if sub.secret:
@@ -101,18 +104,25 @@ class WebhookManager:
             else:
                 sub.failures += 1
                 log.warning(
-                    "Webhook %s: HTTP %d von %s", sub_id, resp.status_code, sub.url,
+                    "Webhook %s: HTTP %d von %s",
+                    sub_id,
+                    resp.status_code,
+                    sub.url,
                 )
         except httpx.HTTPError as exc:
             sub.failures += 1
             log.warning(
                 "Webhook %s: Zustellung fehlgeschlagen an %s (%s)",
-                sub_id, sub.url, type(exc).__name__,
+                sub_id,
+                sub.url,
+                type(exc).__name__,
             )
 
         if sub.failures >= self.MAX_FAILURES:
             log.error(
-                "Webhook %s: Nach %d Fehlern deaktiviert", sub_id, sub.failures,
+                "Webhook %s: Nach %d Fehlern deaktiviert",
+                sub_id,
+                sub.failures,
             )
 
     async def close(self) -> None:

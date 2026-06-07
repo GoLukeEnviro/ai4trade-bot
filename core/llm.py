@@ -8,6 +8,7 @@ class _ConfigProxy:
     """Leitet alle Attribut-Zugriffe an core.llm.config weiter.
     So greifen Patches auf core.llm.config auch in den Provider-Modulen.
     """
+
     def __getattr__(self, name):
         return getattr(sys.modules[__name__].__dict__["config"], name)
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -88,9 +90,7 @@ class SignalStore:
         return [dict(zip(columns, row)) for row in await cursor.fetchall()]
 
     async def get_by_id(self, signal_id: str) -> dict | None:
-        cursor = await self._conn.execute(
-            "SELECT * FROM signals WHERE signal_id = ?", (signal_id,)
-        )
+        cursor = await self._conn.execute("SELECT * FROM signals WHERE signal_id = ?", (signal_id,))
         columns = [desc[0] for desc in cursor.description]
         row = await cursor.fetchone()
         return dict(zip(columns, row)) if row else None

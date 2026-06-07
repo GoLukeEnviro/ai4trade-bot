@@ -44,7 +44,7 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 try:
-    from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter
+    from freqtrade.strategy import DecimalParameter, IntParameter, IStrategy
     from pandas import DataFrame
 except ImportError:
     # Provide stubs for development/testing without freqtrade installed
@@ -52,15 +52,18 @@ except ImportError:
         pass
 
     class DecimalParameter:  # type: ignore[no-redef]
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class IntParameter:  # type: ignore[no-redef]
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            pass
 
     class DataFrame:  # type: ignore[no-redef]
         pass
 
-from integrations.freqtrade_bridge import FreqtradeSignalBridge
+
+from integrations.freqtrade_bridge import FreqtradeSignalBridge  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +83,8 @@ class RainbowSignalStrategy(IStrategy):
 
     # Minimal ROI table — let signals drive exits
     minimal_roi = {
-        "0": 0.10,    # 10% profit
-        "60": 0.05,   # 5% after 1h
+        "0": 0.10,  # 10% profit
+        "60": 0.05,  # 5% after 1h
         "240": 0.02,  # 2% after 4h
     }
 
@@ -137,14 +140,18 @@ class RainbowSignalStrategy(IStrategy):
                 dataframe["enter_long"] = 1
                 logger.info(
                     "LONG signal for %s: confidence=%d ai_conf=%.2f",
-                    pair, confidence, ai_confidence,
+                    pair,
+                    confidence,
+                    ai_confidence,
                 )
             elif action == "SELL":
                 # For short trading (if supported by exchange config)
                 dataframe["enter_short"] = 1
                 logger.info(
                     "SHORT signal for %s: confidence=%d ai_conf=%.2f",
-                    pair, confidence, ai_confidence,
+                    pair,
+                    confidence,
+                    ai_confidence,
                 )
 
         return dataframe

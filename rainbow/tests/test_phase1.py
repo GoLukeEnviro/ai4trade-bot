@@ -1,4 +1,3 @@
-
 import pandas as pd
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -15,14 +14,16 @@ def _make_ohlcv(n: int = 100, base_price: float = 50000.0) -> pd.DataFrame:
     rows = []
     for i in range(n):
         price = base_price + i * 10 + (i % 7) * 50
-        rows.append({
-            "timestamp": 1700000000.0 + i * 3600,
-            "open": price - 50,
-            "high": price + 200,
-            "low": price - 200,
-            "close": price,
-            "volume": 1000.0 + i * 10,
-        })
+        rows.append(
+            {
+                "timestamp": 1700000000.0 + i * 3600,
+                "open": price - 50,
+                "high": price + 200,
+                "low": price - 200,
+                "close": price,
+                "volume": 1000.0 + i * 10,
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -79,8 +80,12 @@ class TestRainbowScorer:
     def test_score_bullish_signals(self):
         signals = [
             CryptoSignal(
-                source="ta_1h", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.8, confidence=0.7,
+                source="ta_1h",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.8,
+                confidence=0.7,
             ),
         ]
         scorer = RainbowScorer()
@@ -92,12 +97,20 @@ class TestRainbowScorer:
     def test_score_mixed_signals(self):
         signals = [
             CryptoSignal(
-                source="ta_1h", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.8, confidence=0.7,
+                source="ta_1h",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.8,
+                confidence=0.7,
             ),
             CryptoSignal(
-                source="x_sentiment", asset="BTC", signal_type=SignalType.SOCIAL,
-                direction=Direction.BEARISH, strength=0.6, confidence=0.5,
+                source="x_sentiment",
+                asset="BTC",
+                signal_type=SignalType.SOCIAL,
+                direction=Direction.BEARISH,
+                strength=0.6,
+                confidence=0.5,
             ),
         ]
         scorer = RainbowScorer()
@@ -113,8 +126,12 @@ class TestRainbowScorer:
         scorer = RainbowScorer(weights={"technical": 1.0})
         signals = [
             CryptoSignal(
-                source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.9, confidence=0.8,
+                source="ta",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.9,
+                confidence=0.8,
             ),
         ]
         scored = scorer.score(signals)
@@ -128,8 +145,12 @@ class TestSignalStore:
         await store.start()
 
         signal = CryptoSignal(
-            source="ta_1h", asset="BTC", signal_type=SignalType.TECHNICAL,
-            direction=Direction.BULLISH, strength=0.72, confidence=0.65,
+            source="ta_1h",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            direction=Direction.BULLISH,
+            strength=0.72,
+            confidence=0.65,
         )
         await store.save(signal)
 
@@ -146,8 +167,12 @@ class TestSignalStore:
         await store.start()
 
         signal = CryptoSignal(
-            source="ta_1h", asset="ETH", signal_type=SignalType.TECHNICAL,
-            direction=Direction.BEARISH, strength=0.3, confidence=0.4,
+            source="ta_1h",
+            asset="ETH",
+            signal_type=SignalType.TECHNICAL,
+            direction=Direction.BEARISH,
+            strength=0.3,
+            confidence=0.4,
         )
         await store.save(signal)
 
@@ -166,10 +191,15 @@ class TestSignalStore:
         await store.start()
 
         for src in ["ta_1h", "ta_4h", "x_sentiment"]:
-            await store.save(CryptoSignal(
-                source=src, asset="BTC", signal_type=SignalType.TECHNICAL,
-                strength=0.5, confidence=0.5,
-            ))
+            await store.save(
+                CryptoSignal(
+                    source=src,
+                    asset="BTC",
+                    signal_type=SignalType.TECHNICAL,
+                    strength=0.5,
+                    confidence=0.5,
+                )
+            )
 
         results = await store.get_latest(source="ta_1h")
         assert len(results) == 1
@@ -207,10 +237,16 @@ class TestAPI:
     @pytest.mark.anyio
     async def test_signals_latest_with_data(self, app_and_store):
         app, store = app_and_store
-        await store.save(CryptoSignal(
-            source="ta_1h", asset="BTC", signal_type=SignalType.TECHNICAL,
-            direction=Direction.BULLISH, strength=0.72, confidence=0.65,
-        ))
+        await store.save(
+            CryptoSignal(
+                source="ta_1h",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.72,
+                confidence=0.65,
+            )
+        )
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/signals/latest")
             assert resp.status_code == 200
@@ -222,8 +258,11 @@ class TestAPI:
     async def test_signal_by_id(self, app_and_store):
         app, store = app_and_store
         sig = CryptoSignal(
-            source="ta_1h", asset="BTC", signal_type=SignalType.TECHNICAL,
-            strength=0.5, confidence=0.5,
+            source="ta_1h",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            strength=0.5,
+            confidence=0.5,
         )
         await store.save(sig)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

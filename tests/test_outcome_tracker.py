@@ -3,9 +3,6 @@
 
 from __future__ import annotations
 
-import threading
-from unittest.mock import MagicMock
-
 from core.outcome_tracker import OutcomeTracker
 from core.signal_model import Signal
 from storage.sqlite_repository import SqliteSignalRepository
@@ -81,7 +78,7 @@ class TestOutcomeTracker:
             check_interval_seconds=1.0,
             get_price_fn=lambda pair: 52000.0,  # Price went up
         )
-        sig = _make_signal(action="BUY", price=50000.0)
+        _make_signal(action="BUY", price=50000.0)
         entry = {"signal_id": "test-1", "pair": "BTC/USDT", "action": "BUY", "entry_price": 50000.0}
         result = tracker._evaluate_outcome(entry)
         assert result is not None

@@ -40,6 +40,7 @@ def create_app(store: Any, settings: Any, engine: Any = None, enable_metrics: bo
     if enable_metrics:
         from prometheus_fastapi_instrumentator import Instrumentator
         from prometheus_fastapi_instrumentator import metrics as instr_metrics
+
         Instrumentator().add(
             instr_metrics.default(metric_namespace="rainbow"),
         ).instrument(app).expose(app, endpoint="/metrics/prometheus", include_in_schema=False)
@@ -68,7 +69,10 @@ def _register_routes(app: FastAPI) -> None:
             raise HTTPException(status_code=503, detail="Signal store not ready")
 
         return await _store.get_latest(
-            asset=asset, source=source, signal_type=signal_type, limit=limit,
+            asset=asset,
+            source=source,
+            signal_type=signal_type,
+            limit=limit,
         )
 
     @app.get("/signals/{signal_id}")
@@ -124,9 +128,7 @@ def _register_routes(app: FastAPI) -> None:
         latest = await _store.get_latest(limit=1)
         stored_count = len(latest)
 
-        active_collectors = sum(
-            1 for v in _collector_status.values() if v == "running"
-        )
+        active_collectors = sum(1 for v in _collector_status.values() if v == "running")
 
         return {
             "signals_stored_count": stored_count,

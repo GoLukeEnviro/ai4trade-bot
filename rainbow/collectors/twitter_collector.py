@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 import httpx
@@ -8,17 +10,49 @@ from rainbow.models.signal import CryptoSignal, Direction, SignalType
 
 log = logging.getLogger(__name__)
 
-_BULLISH_KEYWORDS = frozenset({
-    "bullish", "moon", "pump", "buy", "long", " breakout", "rally",
-    "ath", "all-time high", "surge", "soar", "uptrend", "accumulation",
-    "whale buy", "institutional", "adoption", "upgrade",
-})
+_BULLISH_KEYWORDS = frozenset(
+    {
+        "bullish",
+        "moon",
+        "pump",
+        "buy",
+        "long",
+        " breakout",
+        "rally",
+        "ath",
+        "all-time high",
+        "surge",
+        "soar",
+        "uptrend",
+        "accumulation",
+        "whale buy",
+        "institutional",
+        "adoption",
+        "upgrade",
+    }
+)
 
-_BEARISH_KEYWORDS = frozenset({
-    "bearish", "dump", "crash", "sell", "short", "breakdown",
-    "capitulation", "bear", "bloodbath", "plunge", "scam",
-    "rug pull", "hack", "exploit", "ban", "regulation", "sec",
-})
+_BEARISH_KEYWORDS = frozenset(
+    {
+        "bearish",
+        "dump",
+        "crash",
+        "sell",
+        "short",
+        "breakdown",
+        "capitulation",
+        "bear",
+        "bloodbath",
+        "plunge",
+        "scam",
+        "rug pull",
+        "hack",
+        "exploit",
+        "ban",
+        "regulation",
+        "sec",
+    }
+)
 
 _ASSET_QUERIES: dict[str, str] = {
     "BTC": "bitcoin OR btc",
@@ -79,9 +113,7 @@ class TwitterCollector(BaseCollector):
             except CollectorError:
                 raise
             except Exception as exc:
-                raise CollectorError(
-                    self.name, f"Collection fehlgeschlagen fuer {asset}: {exc}"
-                ) from exc
+                raise CollectorError(self.name, f"Collection fehlgeschlagen fuer {asset}: {exc}") from exc
 
         return signals
 
@@ -98,9 +130,7 @@ class TwitterCollector(BaseCollector):
         )
 
         if resp.status_code == 401:
-            raise CollectorError(
-                self.name, "Twitter API: Unauthorized (Bearer Token ungueltig)"
-            )
+            raise CollectorError(self.name, "Twitter API: Unauthorized (Bearer Token ungueltig)")
         if resp.status_code == 429:
             log.warning("Twitter API Rate Limit erreicht")
             return []

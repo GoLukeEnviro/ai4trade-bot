@@ -25,3 +25,5 @@
 #
 # Implementation is out of scope for this issue (Technical Debt).
 # See: https://github.com/GoLukeEnviro/ai4trade-bot/issues/1
+
+from __future__ import annotations

@@ -22,6 +22,7 @@ def load_yaml_config(path: str | None = None) -> dict:
 
     try:
         import yaml
+
         with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return data if isinstance(data, dict) else {}

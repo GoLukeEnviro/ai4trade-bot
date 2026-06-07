@@ -42,13 +42,10 @@ def validate_schema(df: pd.DataFrame) -> None:
     missing = REQUIRED_COLUMNS - set(df.columns)
     if missing:
         raise ValueError(
-            f"Input data missing required columns: {missing}. "
-            f"Required: {REQUIRED_COLUMNS}, got: {list(df.columns)}"
+            f"Input data missing required columns: {missing}. Required: {REQUIRED_COLUMNS}, got: {list(df.columns)}"
         )
     if len(df) < 30:
-        raise ValueError(
-            f"Input data too small: {len(df)} rows. Minimum 30 rows required."
-        )
+        raise ValueError(f"Input data too small: {len(df)} rows. Minimum 30 rows required.")
 
 
 def load_data(path: str) -> pd.DataFrame:
@@ -87,9 +84,7 @@ def build_features_and_labels(
     # Drop rows with all NaN features
     features = features.dropna(how="all")
     if len(features) < 10:
-        raise ValueError(
-            f"Not enough non-NaN feature rows: {len(features)}. Need at least 10."
-        )
+        raise ValueError(f"Not enough non-NaN feature rows: {len(features)}. Need at least 10.")
 
     # Binary label: 1 if close goes up next period, 0 otherwise
     close = features["close"]
@@ -170,12 +165,8 @@ def save_model(model, output_dir: str) -> Path:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Train XGBoost model for ai4trade-bot PredictiveEngine"
-    )
-    parser.add_argument(
-        "--data", required=True, help="Path to OHLCV CSV/feather/parquet file"
-    )
+    parser = argparse.ArgumentParser(description="Train XGBoost model for ai4trade-bot PredictiveEngine")
+    parser.add_argument("--data", required=True, help="Path to OHLCV CSV/feather/parquet file")
     parser.add_argument(
         "--output",
         default="models/predictive/",

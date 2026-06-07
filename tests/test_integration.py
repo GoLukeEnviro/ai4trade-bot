@@ -1,4 +1,5 @@
 """Integrationstests: Signal-Pipeline ohne echte API-Calls."""
+
 from unittest.mock import MagicMock
 
 from core.signal_model import Signal
@@ -68,4 +69,5 @@ def test_all_modules_import():
 def test_main_import_does_not_start_runtime():
     """main.run ist importierbar und callable, ohne den Bot zu starten."""
     from main import run
+
     assert callable(run)

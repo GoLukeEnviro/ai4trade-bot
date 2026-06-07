@@ -72,8 +72,17 @@ class SqliteSignalRepository(SignalRepository):
                 """INSERT INTO signals (pair, action, confidence, price,
                    quantity, mode, timestamp, trace_id, correlation_id)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (signal.pair, signal.action, signal.confidence, signal.price,
-                 signal.quantity, signal.mode, signal.timestamp, trace_id, correlation_id),
+                (
+                    signal.pair,
+                    signal.action,
+                    signal.confidence,
+                    signal.price,
+                    signal.quantity,
+                    signal.mode,
+                    signal.timestamp,
+                    trace_id,
+                    correlation_id,
+                ),
             )
             self._conn.commit()
             return cur.lastrowid

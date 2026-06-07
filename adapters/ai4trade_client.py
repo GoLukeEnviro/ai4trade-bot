@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import time
 from typing import TYPE_CHECKING
@@ -13,15 +15,16 @@ log = logging.getLogger(__name__)
 
 
 class AI4TradeClient:
-    def __init__(self, token: str | None = None,
-                 cert_pinning: "CertificatePinning | None" = None):
+    def __init__(self, token: str | None = None, cert_pinning: "CertificatePinning | None" = None):
         self._token = token or config.AI4TRADE_TOKEN
         self._base = config.AI4TRADE_BASE
         self._session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {self._token}",
-            "Content-Type": "application/json",
-        })
+        self._session.headers.update(
+            {
+                "Authorization": f"Bearer {self._token}",
+                "Content-Type": "application/json",
+            }
+        )
         self._cert_pinning = cert_pinning
 
     def _request(self, method: str, path: str, **kwargs) -> dict:
@@ -40,14 +43,18 @@ class AI4TradeClient:
         return self._request("GET", "/claw/agents/me")
 
     def publish_signal(self, market: str, action: str, symbol: str, price: float, quantity: float) -> dict:
-        return self._request("POST", "/signals/realtime", json={
-            "market": market,
-            "action": action,
-            "symbol": symbol,
-            "price": price,
-            "quantity": quantity,
-            "executed_at": time.time(),
-        })
+        return self._request(
+            "POST",
+            "/signals/realtime",
+            json={
+                "market": market,
+                "action": action,
+                "symbol": symbol,
+                "price": price,
+                "quantity": quantity,
+                "executed_at": time.time(),
+            },
+        )
 
     def get_positions(self) -> dict:
         return self._request("GET", "/positions")

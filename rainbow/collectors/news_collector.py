@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 import httpx
@@ -8,19 +10,51 @@ from rainbow.models.signal import CryptoSignal, Direction, SignalType
 
 log = logging.getLogger(__name__)
 
-_BULLISH_KEYWORDS = frozenset({
-    "bullish", "rally", "surge", "soar", "breakout", "ath",
-    "all-time high", "adoption", "upgrade", "partnership",
-    "institutional", "etf approved", "positive", "growth",
-    "milestone", "launch",
-})
+_BULLISH_KEYWORDS = frozenset(
+    {
+        "bullish",
+        "rally",
+        "surge",
+        "soar",
+        "breakout",
+        "ath",
+        "all-time high",
+        "adoption",
+        "upgrade",
+        "partnership",
+        "institutional",
+        "etf approved",
+        "positive",
+        "growth",
+        "milestone",
+        "launch",
+    }
+)
 
-_BEARISH_KEYWORDS = frozenset({
-    "bearish", "crash", "dump", "plunge", "decline", "ban",
-    "hack", "exploit", "sec", "regulation", "lawsuit",
-    "fraud", "scam", "rug pull", "capitulation", "warning",
-    "risk", "concern", "negative", "sanctions",
-})
+_BEARISH_KEYWORDS = frozenset(
+    {
+        "bearish",
+        "crash",
+        "dump",
+        "plunge",
+        "decline",
+        "ban",
+        "hack",
+        "exploit",
+        "sec",
+        "regulation",
+        "lawsuit",
+        "fraud",
+        "scam",
+        "rug pull",
+        "capitulation",
+        "warning",
+        "risk",
+        "concern",
+        "negative",
+        "sanctions",
+    }
+)
 
 _ASSET_KEYWORDS: dict[str, list[str]] = {
     "BTC": ["bitcoin", "btc"],

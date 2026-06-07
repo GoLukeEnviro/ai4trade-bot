@@ -12,12 +12,15 @@ class TestLoadYamlConfig:
 
     def test_load_yaml_valid(self, tmp_path):
         cfg = tmp_path / "config.yml"
-        cfg.write_text(textwrap.dedent("""\
+        cfg.write_text(
+            textwrap.dedent("""\
             assets:
               - BTC/USDT
             log_level: INFO
             data_interval: 60
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
         result = load_yaml_config(str(cfg))
         assert result["assets"] == ["BTC/USDT"]
         assert result["log_level"] == "INFO"
@@ -71,10 +74,12 @@ class TestApplyYamlToEnv:
         for k in keys_to_clean:
             os.environ.pop(k, None)
         try:
-            apply_yaml_to_env({
-                "assets": "BTC/USDT",
-                "data_interval": 120,
-            })
+            apply_yaml_to_env(
+                {
+                    "assets": "BTC/USDT",
+                    "data_interval": 120,
+                }
+            )
             assert os.environ["ASSETS"] == "BTC/USDT"
             assert os.environ["DATA_INTERVAL"] == "120"
         finally:

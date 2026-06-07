@@ -37,8 +37,11 @@ class TestNewsCollector:
 
     def test_analyze_bullish_news(self, collector):
         articles = [
-            {"title": "Bitcoin bullish breakout confirmed",
-             "body": "Institutional adoption surging", "categories": "BTC"},
+            {
+                "title": "Bitcoin bullish breakout confirmed",
+                "body": "Institutional adoption surging",
+                "categories": "BTC",
+            },
             {"title": "BTC rally to all-time high", "body": "Partnership announced", "categories": "BTC"},
         ]
         signal = collector._analyze_articles(articles, "BTC")
@@ -63,16 +66,20 @@ class TestNewsCollector:
 
     @pytest.mark.anyio
     async def test_collect_with_mocked_api(self, collector):
-        mock_response = type("Response", (), {
-            "status_code": 200,
-            "json": lambda self: {
-                "Data": [
-                    {"title": "Bitcoin bullish rally", "body": "BTC adoption surges", "categories": "BTC"},
-                    {"title": "Bitcoin crash warning", "body": "SEC regulation risk", "categories": "BTC"},
-                ]
+        mock_response = type(
+            "Response",
+            (),
+            {
+                "status_code": 200,
+                "json": lambda self: {
+                    "Data": [
+                        {"title": "Bitcoin bullish rally", "body": "BTC adoption surges", "categories": "BTC"},
+                        {"title": "Bitcoin crash warning", "body": "SEC regulation risk", "categories": "BTC"},
+                    ]
+                },
+                "raise_for_status": lambda self: None,
             },
-            "raise_for_status": lambda self: None,
-        })()
+        )()
 
         with patch.object(collector._client, "get", new_callable=AsyncMock, return_value=mock_response):
             signals = await collector.collect()
@@ -82,8 +89,10 @@ class TestNewsCollector:
     @pytest.mark.anyio
     async def test_collect_timeout_returns_empty(self, collector):
         import httpx
+
         with patch.object(
-            collector._client, "get",
+            collector._client,
+            "get",
             new_callable=AsyncMock,
             side_effect=httpx.TimeoutException("timeout"),
         ):
@@ -111,12 +120,18 @@ class TestWebhookManager:
     def test_subscription_matches_asset(self):
         sub = WebhookSubscription(url="https://example.com/hook", asset="BTC")
         btc_signal = CryptoSignal(
-            source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-            strength=0.8, confidence=0.7,
+            source="ta",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            strength=0.8,
+            confidence=0.7,
         )
         eth_signal = CryptoSignal(
-            source="ta", asset="ETH", signal_type=SignalType.TECHNICAL,
-            strength=0.8, confidence=0.7,
+            source="ta",
+            asset="ETH",
+            signal_type=SignalType.TECHNICAL,
+            strength=0.8,
+            confidence=0.7,
         )
         assert sub.matches(btc_signal) is True
         assert sub.matches(eth_signal) is False
@@ -124,12 +139,18 @@ class TestWebhookManager:
     def test_subscription_matches_source(self):
         sub = WebhookSubscription(url="https://example.com/hook", source="ta_1h")
         matching = CryptoSignal(
-            source="ta_1h", asset="BTC", signal_type=SignalType.TECHNICAL,
-            strength=0.5, confidence=0.5,
+            source="ta_1h",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            strength=0.5,
+            confidence=0.5,
         )
         non_matching = CryptoSignal(
-            source="x_sentiment", asset="BTC", signal_type=SignalType.SOCIAL,
-            strength=0.5, confidence=0.5,
+            source="x_sentiment",
+            asset="BTC",
+            signal_type=SignalType.SOCIAL,
+            strength=0.5,
+            confidence=0.5,
         )
         assert sub.matches(matching) is True
         assert sub.matches(non_matching) is False
@@ -137,8 +158,11 @@ class TestWebhookManager:
     def test_subscription_no_filters_matches_all(self):
         sub = WebhookSubscription(url="https://example.com/hook")
         sig = CryptoSignal(
-            source="anything", asset="SOL", signal_type=SignalType.NEWS,
-            strength=0.5, confidence=0.5,
+            source="anything",
+            asset="SOL",
+            signal_type=SignalType.NEWS,
+            strength=0.5,
+            confidence=0.5,
         )
         assert sub.matches(sig) is True
 
@@ -148,8 +172,12 @@ class TestWebhookManager:
         manager.subscribe(sub)
 
         signal = CryptoSignal(
-            source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-            direction=Direction.BULLISH, strength=0.8, confidence=0.7,
+            source="ta",
+            asset="BTC",
+            signal_type=SignalType.TECHNICAL,
+            direction=Direction.BULLISH,
+            strength=0.8,
+            confidence=0.7,
         )
 
         with patch.object(manager._client, "post", new_callable=AsyncMock) as mock_post:
@@ -172,25 +200,41 @@ class TestEnhancedScorer:
         # Frisch + alt gemischt: das alte Signal ist stark (0.9), wird aber durch Decay entwertet
         mixed_signals = [
             CryptoSignal(
-                source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.5, confidence=0.8,
+                source="ta",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.5,
+                confidence=0.8,
                 timestamp=now,
             ),
             CryptoSignal(
-                source="x", asset="BTC", signal_type=SignalType.SOCIAL,
-                direction=Direction.BULLISH, strength=0.9, confidence=0.8,
+                source="x",
+                asset="BTC",
+                signal_type=SignalType.SOCIAL,
+                direction=Direction.BULLISH,
+                strength=0.9,
+                confidence=0.8,
                 timestamp=now - timedelta(hours=5),
             ),
         ]
         all_fresh = [
             CryptoSignal(
-                source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.5, confidence=0.8,
+                source="ta",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.5,
+                confidence=0.8,
                 timestamp=now,
             ),
             CryptoSignal(
-                source="x", asset="BTC", signal_type=SignalType.SOCIAL,
-                direction=Direction.BULLISH, strength=0.9, confidence=0.8,
+                source="x",
+                asset="BTC",
+                signal_type=SignalType.SOCIAL,
+                direction=Direction.BULLISH,
+                strength=0.9,
+                confidence=0.8,
                 timestamp=now,
             ),
         ]
@@ -208,22 +252,38 @@ class TestEnhancedScorer:
 
         confirmed = [
             CryptoSignal(
-                source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.8, confidence=0.7,
+                source="ta",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.8,
+                confidence=0.7,
             ),
             CryptoSignal(
-                source="x", asset="BTC", signal_type=SignalType.SOCIAL,
-                direction=Direction.BULLISH, strength=0.7, confidence=0.6,
+                source="x",
+                asset="BTC",
+                signal_type=SignalType.SOCIAL,
+                direction=Direction.BULLISH,
+                strength=0.7,
+                confidence=0.6,
             ),
         ]
         unconfirmed = [
             CryptoSignal(
-                source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.8, confidence=0.7,
+                source="ta",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.8,
+                confidence=0.7,
             ),
             CryptoSignal(
-                source="x", asset="BTC", signal_type=SignalType.SOCIAL,
-                direction=Direction.BEARISH, strength=0.7, confidence=0.6,
+                source="x",
+                asset="BTC",
+                signal_type=SignalType.SOCIAL,
+                direction=Direction.BEARISH,
+                strength=0.7,
+                confidence=0.6,
             ),
         ]
 
@@ -236,8 +296,12 @@ class TestEnhancedScorer:
         scorer = RainbowScorer()
         signals = [
             CryptoSignal(
-                source="ta", asset="BTC", signal_type=SignalType.TECHNICAL,
-                direction=Direction.BULLISH, strength=0.9, confidence=0.8,
+                source="ta",
+                asset="BTC",
+                signal_type=SignalType.TECHNICAL,
+                direction=Direction.BULLISH,
+                strength=0.9,
+                confidence=0.8,
             ),
         ]
         scored = scorer.score(signals)

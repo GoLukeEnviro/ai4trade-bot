@@ -108,7 +108,7 @@ def test_rainbow_api_failure_does_not_block_other_targets():
     mock_rainbow.publish.return_value = False
     router = SignalRouter(publisher=mock_publisher, rainbow_publisher=mock_rainbow)
     signal = Signal(pair="BTC/USDT", action="BUY", confidence=75, price=65000.0, quantity=0.1)
-    success = router.route(signal, targets=["ai4trade", "rainbow_api"])
+    router.route(signal, targets=["ai4trade", "rainbow_api"])
     # ai4trade succeeds but rainbow fails — overall false because ai4trade success
     # but rainbow failure is graceful (logged, not blocking)
     mock_publisher.publish.assert_called_once()
@@ -126,4 +126,3 @@ def test_rainbow_api_and_ai4trade_both_targets():
     assert success is True
     mock_publisher.publish.assert_called_once()
     mock_rainbow.publish.assert_called_once()
-

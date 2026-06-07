@@ -1,4 +1,5 @@
 """Tests for core.secret_provider and config integration."""
+
 import os
 from unittest.mock import MagicMock, patch
 
@@ -82,9 +83,7 @@ class TestVaultSecretProvider:
     def test_returns_vault_value_when_available(self, monkeypatch):
         mock_hvac = MagicMock()
         mock_client = MagicMock()
-        mock_client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {"data": {"SECRET_KEY": "from_vault"}}
-        }
+        mock_client.secrets.kv.v2.read_secret_version.return_value = {"data": {"data": {"SECRET_KEY": "from_vault"}}}
         mock_hvac.Client.return_value = mock_client
         provider = VaultSecretProvider()
         with patch.dict("sys.modules", {"hvac": mock_hvac}):
@@ -147,11 +146,20 @@ class TestConfigIntegration:
     def test_config_defaults_unchanged(self, monkeypatch):
         monkeypatch.setenv("SECRET_BACKEND", "env")
         for key in [
-            "AI4TRADE_TOKEN", "CLAUDE_API_KEY", "LLM_API_KEY",
-            "CLAUDE_MODEL", "LLM_PROVIDER", "LLM_MODEL", "LLM_BASE_URL",
-            "ASSETS", "DATA_INTERVAL", "SENTIMENT_INTERVAL",
-            "HEARTBEAT_INTERVAL", "CONFIDENCE_THRESHOLD",
-            "LOG_LEVEL", "MAX_SIGNAL_QUEUE",
+            "AI4TRADE_TOKEN",
+            "CLAUDE_API_KEY",
+            "LLM_API_KEY",
+            "CLAUDE_MODEL",
+            "LLM_PROVIDER",
+            "LLM_MODEL",
+            "LLM_BASE_URL",
+            "ASSETS",
+            "DATA_INTERVAL",
+            "SENTIMENT_INTERVAL",
+            "HEARTBEAT_INTERVAL",
+            "CONFIDENCE_THRESHOLD",
+            "LOG_LEVEL",
+            "MAX_SIGNAL_QUEUE",
         ]:
             monkeypatch.delenv(key, raising=False)
 

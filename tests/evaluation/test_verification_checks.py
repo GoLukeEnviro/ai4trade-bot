@@ -5,10 +5,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from rainbow.evaluation.models import AIEvaluation
-from rainbow.models.signal import CryptoSignal, Direction, SignalType
+from rainbow.models.signal import CryptoSignal, SignalType
 
 
 class TestVerificationCheck1:
@@ -209,4 +207,5 @@ class TestVerificationCheck10:
         import rainbow.evaluation.llm_evaluator  # noqa: F401
         import rainbow.evaluation.models  # noqa: F401
         import rainbow.models.signal  # noqa: F401
+
         assert True  # If we get here, no circular import

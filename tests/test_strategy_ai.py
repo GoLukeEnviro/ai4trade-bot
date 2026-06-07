@@ -6,7 +6,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from core.ai_evaluator_bridge import AIEvaluatorBridge
-from core.signal_model import Signal
 from core.strategy import Strategy
 
 

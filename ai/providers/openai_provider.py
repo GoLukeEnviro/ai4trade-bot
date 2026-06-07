@@ -12,6 +12,7 @@ config = _default_config
 class OpenAICompatibleProvider:
     def __init__(self, api_key=None, model=None, base_url=None):
         from openai import OpenAI
+
         self._client = OpenAI(
             api_key=api_key or config.LLM_API_KEY or "not-needed",
             base_url=base_url or config.LLM_BASE_URL,

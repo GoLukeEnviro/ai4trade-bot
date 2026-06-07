@@ -133,7 +133,9 @@ class LLMEvaluator(BaseEvaluator):
         if skip_on_low_score and rainbow_score < self._threshold:
             logger.debug(
                 "Skipping %s (score=%.2f < threshold=%.2f)",
-                signal.asset, rainbow_score, self._threshold,
+                signal.asset,
+                rainbow_score,
+                self._threshold,
             )
             return None
 
@@ -183,7 +185,8 @@ class LLMEvaluator(BaseEvaluator):
                 parsed = json.loads(raw_content)
             except json.JSONDecodeError:
                 logger.warning(
-                    "JSONDecodeError for %s — returning safe fallback", signal.asset,
+                    "JSONDecodeError for %s — returning safe fallback",
+                    signal.asset,
                 )
                 return _safe_aievaluation(
                     model_used=self._model,
@@ -195,8 +198,11 @@ class LLMEvaluator(BaseEvaluator):
             await self._cache.set(signal.asset, direction_str, evaluation)
             logger.info(
                 "Evaluated %s: confidence=%.2f risk=%s regime=%s latency=%dms",
-                signal.asset, evaluation.ai_confidence, evaluation.risk_level,
-                evaluation.market_regime, latency_ms,
+                signal.asset,
+                evaluation.ai_confidence,
+                evaluation.risk_level,
+                evaluation.market_regime,
+                latency_ms,
             )
             return evaluation
 
@@ -211,6 +217,7 @@ class LLMEvaluator(BaseEvaluator):
 
     def _build_evaluation(self, parsed: dict, latency_ms: int) -> AIEvaluation:
         """Construct AIEvaluation from parsed JSON with safe defaults."""
+
         def _get(key: str, default=None):
             return parsed.get(key, default)
 

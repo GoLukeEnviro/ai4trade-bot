@@ -84,7 +84,6 @@ class AIEvaluatorBridge:
             return {"ai_confidence": 1.0, "risk_level": "unknown"}
 
         try:
-            from rainbow.evaluation.models import AIEvaluation
             from rainbow.models.signal import CryptoSignal, Direction, SignalType
 
             # Map legacy action → Rainbow direction

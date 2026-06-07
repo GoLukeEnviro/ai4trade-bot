@@ -53,9 +53,7 @@ class VaultSecretProvider(SecretProvider):
         self._init_client()
         if self._client:
             try:
-                resp = self._client.secrets.kv.v2.read_secret_version(
-                    path="ai4trade-bot"
-                )
+                resp = self._client.secrets.kv.v2.read_secret_version(path="ai4trade-bot")
                 return resp["data"]["data"].get(key, os.getenv(key, default))
             except Exception:
                 log.warning("Vault access failed for %s", key)

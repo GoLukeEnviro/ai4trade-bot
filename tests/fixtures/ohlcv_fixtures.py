@@ -28,13 +28,15 @@ def make_bitget_ohlcv_response(n=200, base_price=50000.0) -> list:
     df = make_ohlcv(n, base_price)
     result = []
     for _, row in df.iterrows():
-        result.append([
-            str(int(row["open"] * 1000)),
-            str(row["open"]),
-            str(row["high"]),
-            str(row["low"]),
-            str(row["close"]),
-            str(row["volume"]),
-            str(row["volume"] * row["close"]),
-        ])
+        result.append(
+            [
+                str(int(row["open"] * 1000)),
+                str(row["open"]),
+                str(row["high"]),
+                str(row["low"]),
+                str(row["close"]),
+                str(row["volume"]),
+                str(row["volume"] * row["close"]),
+            ]
+        )
     return result

@@ -33,7 +33,7 @@ class ScorerConfig(BaseModel):
 
 
 class ApiConfig(BaseModel):
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # nosec B104 — intentional: bind all interfaces for containerized deployment
     port: int = Field(default=8000, ge=1, le=65535)
 
 

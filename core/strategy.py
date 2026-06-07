@@ -1,4 +1,6 @@
 # core/strategy.py
+from __future__ import annotations
+
 import logging
 
 from core.ai_evaluator_bridge import AIEvaluatorBridge
@@ -58,7 +60,12 @@ class Strategy:
             confidence = int(confidence * ai_confidence)
             log.info(
                 "AI adjusted confidence: %s %s raw=%d × ai_conf=%.2f → %d (risk=%s)",
-                pair, ta_signal, raw, ai_confidence, confidence, risk_level,
+                pair,
+                ta_signal,
+                raw,
+                ai_confidence,
+                confidence,
+                risk_level,
             )
 
             # Additional 20% reduction for high risk

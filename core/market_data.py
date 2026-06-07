@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import time
 
@@ -27,7 +29,7 @@ class MarketData:
             except requests.RequestException as e:
                 last_err = e
                 log.warning(f"{source} API Fehler (Versuch {attempt + 1}/{max_retries}): {e}")
-                time.sleep(backoff_base * (2 ** attempt))
+                time.sleep(backoff_base * (2**attempt))
         raise last_err
 
     def get_ohlcv(self, symbol: str, interval: str = "1h", limit: int = 200) -> pd.DataFrame:

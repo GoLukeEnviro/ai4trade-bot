@@ -53,10 +53,7 @@ class RainbowScorer:
             return signals
 
         rainbow_score = self._compute_rainbow_score(signals)
-        return [
-            sig.model_copy(update={"rainbow_score": rainbow_score})
-            for sig in signals
-        ]
+        return [sig.model_copy(update={"rainbow_score": rainbow_score}) for sig in signals]
 
     async def score_and_evaluate(self, signals: list[CryptoSignal]) -> list[CryptoSignal]:
         """Score + optionale KI-Evaluierung. Async Wrapper fuer die Pipeline."""
@@ -95,7 +92,7 @@ class RainbowScorer:
 
             age_seconds = (now - sig.timestamp).total_seconds()
             decay_periods = max(0, age_seconds - self._decay_threshold) / self._decay_threshold
-            decay = self._decay_factor ** decay_periods
+            decay = self._decay_factor**decay_periods
             weight = base_weight * (1.0 if decay_periods <= 0 else decay)
 
             direction_value = sig.direction.value if sig.direction else "neutral"

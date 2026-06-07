@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import time
 from typing import TYPE_CHECKING
@@ -15,8 +17,9 @@ log = logging.getLogger(__name__)
 
 
 class BitgetRestClient:
-    def __init__(self, rate_limiter: "TokenBucketRateLimiter | None" = None,
-                 cert_pinning: "CertificatePinning | None" = None):
+    def __init__(
+        self, rate_limiter: "TokenBucketRateLimiter | None" = None, cert_pinning: "CertificatePinning | None" = None
+    ):
         self._session = requests.Session()
         self._base = config.BITGET_BASE
         self._rate_limiter = rate_limiter
@@ -56,7 +59,7 @@ class BitgetRestClient:
             except requests.RequestException as e:
                 last_err = e
                 log.warning(f"Bitget API Fehler (Versuch {attempt + 1}/{max_retries}): {e}")
-                time.sleep(backoff_base * (2 ** attempt))
+                time.sleep(backoff_base * (2**attempt))
         raise last_err
 
     @staticmethod
@@ -67,14 +70,16 @@ class BitgetRestClient:
     def _parse_ohlcv(raw: list) -> pd.DataFrame:
         rows = []
         for candle in raw:
-            rows.append({
-                "timestamp": BitgetRestClient._parse_timestamp(candle[0]),
-                "open": float(candle[1]),
-                "high": float(candle[2]),
-                "low": float(candle[3]),
-                "close": float(candle[4]),
-                "volume": float(candle[5]),
-            })
+            rows.append(
+                {
+                    "timestamp": BitgetRestClient._parse_timestamp(candle[0]),
+                    "open": float(candle[1]),
+                    "high": float(candle[2]),
+                    "low": float(candle[3]),
+                    "close": float(candle[4]),
+                    "volume": float(candle[5]),
+                }
+            )
         return pd.DataFrame(rows)
 
     @staticmethod

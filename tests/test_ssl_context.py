@@ -26,24 +26,30 @@ class TestCertificatePinning:
         cert_der = b"\x00\x01\x02\x03"
         cert_hash = hashlib.sha256(cert_der).digest()
         fingerprint = "sha256/" + cert_hash.hex()
-        pinning = CertificatePinning(fingerprints={
-            "api.bitget.com": [fingerprint],
-        })
+        pinning = CertificatePinning(
+            fingerprints={
+                "api.bitget.com": [fingerprint],
+            }
+        )
         assert pinning.verify_fingerprint("api.bitget.com", cert_der) is True
 
     def test_verify_fingerprint_mismatch(self):
         """verify_fingerprint gibt False bei nicht passendem Pin."""
         cert_der = b"\x00\x01\x02\x03"
         wrong_fingerprint = "sha256/" + ("aa" * 32)
-        pinning = CertificatePinning(fingerprints={
-            "api.bitget.com": [wrong_fingerprint],
-        })
+        pinning = CertificatePinning(
+            fingerprints={
+                "api.bitget.com": [wrong_fingerprint],
+            }
+        )
         assert pinning.verify_fingerprint("api.bitget.com", cert_der) is False
 
     def test_verify_fingerprint_empty_pins_list(self):
         """verify_fingerprint gibt False bei leerer Pin-Liste."""
         cert_der = b"\x00\x01\x02\x03"
-        pinning = CertificatePinning(fingerprints={
-            "api.bitget.com": [],
-        })
+        pinning = CertificatePinning(
+            fingerprints={
+                "api.bitget.com": [],
+            }
+        )
         assert pinning.verify_fingerprint("api.bitget.com", cert_der) is False

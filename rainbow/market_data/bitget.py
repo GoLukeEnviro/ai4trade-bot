@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import time
@@ -115,7 +117,7 @@ class BitgetClient(MarketDataProvider):
                 return body
 
             if attempt < max_retries - 1:
-                await asyncio.sleep(backoff_base * (2 ** attempt))
+                await asyncio.sleep(backoff_base * (2**attempt))
 
         raise ProviderError("bitget", f"Nach {max_retries} Versuchen gescheitert: {last_exc}")
 

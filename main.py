@@ -9,11 +9,11 @@ from logging.handlers import RotatingFileHandler
 import config
 from adapters.heartbeat import Heartbeat
 from adapters.task_handler import TaskHandler
+from core.ai_evaluator_bridge import AIEvaluatorBridge
 from core.market_data import MarketData
 from core.market_signals import MarketSignalAnalyzer
-from core.sentiment import SentimentAnalyzer
-from core.ai_evaluator_bridge import AIEvaluatorBridge
 from core.outcome_tracker import OutcomeTracker
+from core.sentiment import SentimentAnalyzer
 from core.strategy import Strategy
 from core.technical import TechnicalAnalyzer
 from core.whimsy import create_formatter, print_whimsy_banner
@@ -37,7 +37,10 @@ def setup_logging() -> None:
     stream.setFormatter(fmt)
     root.addHandler(stream)
     file_handler = RotatingFileHandler(
-        "storage/bot.log", maxBytes=10_000_000, backupCount=5, encoding="utf-8",
+        "storage/bot.log",
+        maxBytes=10_000_000,
+        backupCount=5,
+        encoding="utf-8",
     )
     file_handler.setFormatter(fmt)
     root.addHandler(file_handler)
@@ -161,20 +164,30 @@ def run() -> None:
                     )
 
                 sentiment_cache, last_sentiment_time = _fetch_sentiment(
-                    sentiment_analyzer, sentiment_cache, last_sentiment_time,
+                    sentiment_analyzer,
+                    sentiment_cache,
+                    last_sentiment_time,
                 )
 
                 trade_signal = strategy.decide(
-                    ta_result, sentiment_cache, asset,
-                    ta_result["indicators"]["price"], 0.1,
+                    ta_result,
+                    sentiment_cache,
+                    asset,
+                    ta_result["indicators"]["price"],
+                    0.1,
                     market_context=market_context,
                 )
 
                 if trade_signal.confidence >= config.CONFIDENCE_THRESHOLD:
                     signal_id = repository.log_signal_with_id(trade_signal)
-                    log.info("Signal %s: %s %s confidence=%d price=%.2f",
-                             signal_id[:8], trade_signal.pair, trade_signal.action,
-                             trade_signal.confidence, trade_signal.price)
+                    log.info(
+                        "Signal %s: %s %s confidence=%d price=%.2f",
+                        signal_id[:8],
+                        trade_signal.pair,
+                        trade_signal.action,
+                        trade_signal.confidence,
+                        trade_signal.price,
+                    )
                     signal_router.route(trade_signal, targets=["rainbow_api", "log"])
 
             task_handler.process_pending()

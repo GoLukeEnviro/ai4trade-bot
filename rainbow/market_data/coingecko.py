@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 
@@ -100,7 +102,7 @@ class CoinGeckoClient(MarketDataProvider):
                     return resp.json()
 
             if attempt < max_retries - 1:
-                await asyncio.sleep(backoff_base * (2 ** attempt))
+                await asyncio.sleep(backoff_base * (2**attempt))
 
         raise ProviderError("coingecko", f"Nach {max_retries} Versuchen gescheitert: {last_exc}")
 

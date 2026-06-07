@@ -13,7 +13,9 @@ class TestCreateProvider:
         mock_claude.assert_called_once()
         assert isinstance(provider, MagicMock)
 
-    @patch.object(llm_module, "config", MagicMock(LLM_PROVIDER="openai", LLM_API_KEY="k", LLM_MODEL="m", LLM_BASE_URL="http://x"))
+    @patch.object(
+        llm_module, "config", MagicMock(LLM_PROVIDER="openai", LLM_API_KEY="k", LLM_MODEL="m", LLM_BASE_URL="http://x")
+    )
     @patch("core.llm.OpenAICompatibleProvider")
     def test_create_provider_openai(self, mock_openai):
         provider = llm_module.create_provider()
@@ -60,7 +62,9 @@ class TestClaudeProvider:
 
 
 class TestOpenAICompatibleProvider:
-    @patch("core.llm.config", MagicMock(LLM_API_KEY="test-key", LLM_MODEL="test-model", LLM_BASE_URL="http://localhost"))
+    @patch(
+        "core.llm.config", MagicMock(LLM_API_KEY="test-key", LLM_MODEL="test-model", LLM_BASE_URL="http://localhost")
+    )
     @patch("openai.OpenAI")
     def test_openai_provider_complete(self, mock_openai_cls):
         mock_client = MagicMock()

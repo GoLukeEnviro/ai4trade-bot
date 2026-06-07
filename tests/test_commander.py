@@ -20,9 +20,7 @@ def test_close_positions_returns_correct_intent():
 
 def test_status_intent():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "status", "pair": None, "requires_approval": False}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "status", "pair": None, "requires_approval": False})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("wie gehts dem bot?")
@@ -44,9 +42,7 @@ def test_llm_returning_live_mode_still_dry_run():
 
 def test_unsupported_intent_buy_now_returns_unknown():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "buy_now", "pair": "BTC/USDT", "requires_approval": False}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "buy_now", "pair": "BTC/USDT", "requires_approval": False})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("kaufe BTC jetzt")
@@ -57,9 +53,7 @@ def test_unsupported_intent_buy_now_returns_unknown():
 
 def test_unsupported_intent_follow_trader_returns_unknown():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "follow_trader", "pair": None, "requires_approval": False}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "follow_trader", "pair": None, "requires_approval": False})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("folge trader X")
@@ -88,9 +82,7 @@ def test_llm_exception_returns_unknown():
 
 def test_missing_requires_approval_defaults_to_false():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "status", "pair": None}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "status", "pair": None})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("status")
@@ -121,9 +113,7 @@ def test_output_is_always_intent_object():
 
 def test_set_strategy_intent():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "set_strategy", "pair": None, "requires_approval": False}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "set_strategy", "pair": None, "requires_approval": False})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("wechsel zu Momentum-Strategie")
@@ -134,9 +124,7 @@ def test_set_strategy_intent():
 
 def test_set_risk_level_requires_approval():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "set_risk_level", "pair": None, "requires_approval": False}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "set_risk_level", "pair": None, "requires_approval": False})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("setze Risiko auf aggressive")
@@ -173,9 +161,7 @@ def test_toggle_shadow_mode_requires_approval():
 
 def test_show_audit_log_intent():
     mock_llm = MagicMock()
-    mock_llm.complete.return_value = json.dumps(
-        {"intent": "show_audit_log", "pair": None, "requires_approval": False}
-    )
+    mock_llm.complete.return_value = json.dumps({"intent": "show_audit_log", "pair": None, "requires_approval": False})
     with patch("chat.commander.create_provider", return_value=mock_llm):
         cmd = Commander(api_key="test-key")
         intent = cmd.parse("zeige letzte Audit-Eintraege")

@@ -12,6 +12,7 @@ config = _default_config
 class ClaudeProvider:
     def __init__(self, api_key=None, model=None):
         from anthropic import Anthropic
+
         self._client = Anthropic(api_key=api_key or config.CLAUDE_API_KEY)
         self._model = model or config.CLAUDE_MODEL
 

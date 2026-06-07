@@ -17,14 +17,16 @@ def _mock_response(status_code: int = 200, json_data=None):
 
 def test_get_signal_buy() -> None:
     bridge = FreqtradeSignalBridge(api_url="http://localhost:8000", min_request_interval=0.0)
-    data = [{
-        "direction": "bullish",
-        "confidence": 0.80,
-        "ai_evaluation": {"ai_confidence": 0.75},
-        "signal_id": "test-1",
-        "asset": "BTCUSDT",
-        "source": "ta_1h",
-    }]
+    data = [
+        {
+            "direction": "bullish",
+            "confidence": 0.80,
+            "ai_evaluation": {"ai_confidence": 0.75},
+            "signal_id": "test-1",
+            "asset": "BTCUSDT",
+            "source": "ta_1h",
+        }
+    ]
     with patch("integrations.freqtrade_bridge.requests.get", return_value=_mock_response(200, data)):
         result = bridge.get_signal("BTC/USDT")
 
