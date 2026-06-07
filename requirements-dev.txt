@@ -126,11 +126,3 @@ prometheus-client>=0.21.0
     # via prometheus custom metrics
 pytest-asyncio>=0.23.0
     # via -r requirements-dev.in
-fastapi>=0.110.0
-    # via prometheus-fastapi-instrumentator
-uvicorn>=0.29.0
-    # via -r requirements.in
-pydantic-settings>=2.0
-    # via -r requirements.in
-aiosqlite>=0.20.0
-    # via -r requirements.in

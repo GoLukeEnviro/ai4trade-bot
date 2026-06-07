@@ -101,7 +101,7 @@ prometheus-fastapi-instrumentator>=7.0.0
 prometheus-client>=0.21.0
     # via prometheus custom metrics
 fastapi>=0.110.0
-    # via prometheus-fastapi-instrumentator
+    # via -r requirements.in
 uvicorn>=0.29.0
     # via -r requirements.in
 pydantic-settings>=2.0
