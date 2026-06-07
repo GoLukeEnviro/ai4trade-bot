@@ -2,6 +2,7 @@
 import sys
 
 from ai.providers import create_provider as _original_create_provider
+from ai.sentiment import SentimentAnalyzer as SentimentAnalyzer  # noqa: E402
 
 # Standardmaessig das echte create_provider. Tests patchen core.sentiment.create_provider.
 create_provider = _original_create_provider

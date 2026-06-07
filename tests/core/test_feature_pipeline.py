@@ -80,6 +80,28 @@ class TestFeaturePipelineBuildFeatures:
 
         assert result.empty
 
+    def test_single_row_dataframe(self):
+        """Single-row DataFrame — returns 1 row, NaN for multi-period features."""
+        pipeline = FeaturePipeline()
+        ohlcv = _make_ohlcv(1)
+        result = pipeline.build_features(ohlcv)
+
+        assert len(result) == 1
+        assert "returns_1h" in result.columns
+        assert "returns_4h" in result.columns
+
+    def test_nan_values_in_close(self):
+        """NaN in close column — pipeline should still produce output without crashing."""
+        pipeline = FeaturePipeline()
+        ohlcv = _make_ohlcv(50)
+        ohlcv.loc[ohlcv.index[10], "close"] = np.nan
+        ohlcv.loc[ohlcv.index[20], "volume"] = np.nan
+
+        result = pipeline.build_features(ohlcv)
+
+        assert len(result) == 50
+        assert "rsi_14" in result.columns
+
 
 class TestFeaturePipelineAddFearGreed:
     """Tests für FeaturePipeline.add_fear_greed()."""

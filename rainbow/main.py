@@ -277,6 +277,15 @@ def create_engine(settings: RainbowSettings) -> FastAPI:
     return app
 
 
+def create_app() -> FastAPI:
+    """Factory function for uvicorn --factory mode (no arguments)."""
+    from pathlib import Path
+
+    config_path = Path("rainbow/config.yaml")
+    settings = RainbowSettings.from_yaml(config_path)
+    return create_engine(settings)
+
+
 def main() -> None:
     """Entry point: Settings laden, Logging konfigurieren, Server starten."""
     from pathlib import Path
