@@ -1,9 +1,6 @@
 import os
 import textwrap
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from config_schema import apply_yaml_to_env, load_yaml_config
 

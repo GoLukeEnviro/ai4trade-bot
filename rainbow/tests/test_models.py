@@ -3,14 +3,14 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from rainbow.exceptions import CollectorError, ConfigValidationError, ProviderError, RainbowError
-from rainbow.models.signal import CryptoSignal, Direction, SignalType
 from rainbow.config.settings import (
+    ApiConfig,
     CollectorConfig,
     RainbowSettings,
     ScorerConfig,
-    ApiConfig,
 )
+from rainbow.exceptions import CollectorError, ConfigValidationError, ProviderError, RainbowError
+from rainbow.models.signal import CryptoSignal, Direction, SignalType
 
 
 class TestCryptoSignal:

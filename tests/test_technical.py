@@ -1,5 +1,6 @@
 # tests/test_technical.py
 import pytest
+
 from core.technical import TechnicalAnalyzer
 from tests.fixtures.ohlcv_fixtures import make_ohlcv
 

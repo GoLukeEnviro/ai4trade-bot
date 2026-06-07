@@ -37,7 +37,8 @@ class TestNewsCollector:
 
     def test_analyze_bullish_news(self, collector):
         articles = [
-            {"title": "Bitcoin bullish breakout confirmed", "body": "Institutional adoption surging", "categories": "BTC"},
+            {"title": "Bitcoin bullish breakout confirmed",
+             "body": "Institutional adoption surging", "categories": "BTC"},
             {"title": "BTC rally to all-time high", "body": "Partnership announced", "categories": "BTC"},
         ]
         signal = collector._analyze_articles(articles, "BTC")

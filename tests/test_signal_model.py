@@ -1,5 +1,5 @@
 # tests/test_signal_model.py
-from core.signal_model import Signal, Intent
+from core.signal_model import Intent, Signal
 
 
 def test_signal_creation():

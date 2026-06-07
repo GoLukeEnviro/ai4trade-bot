@@ -1,5 +1,4 @@
 # tests/test_signal_router.py
-import logging
 from unittest.mock import MagicMock
 
 from core.signal_model import Signal

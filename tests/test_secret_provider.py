@@ -2,8 +2,6 @@
 import os
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.secret_provider import (
     EnvSecretProvider,
     KeyringSecretProvider,
@@ -137,6 +135,7 @@ class TestConfigIntegration:
         monkeypatch.setenv("LLM_API_KEY", "test_llm_key")
 
         import importlib
+
         import config as cfg
 
         importlib.reload(cfg)
@@ -157,6 +156,7 @@ class TestConfigIntegration:
             monkeypatch.delenv(key, raising=False)
 
         import importlib
+
         import config as cfg
 
         importlib.reload(cfg)
@@ -177,6 +177,7 @@ class TestConfigIntegration:
     def test_config_module_import_is_clean(self):
         """config import triggers secret_provider creation without error."""
         import importlib
+
         import config as cfg
 
         importlib.reload(cfg)

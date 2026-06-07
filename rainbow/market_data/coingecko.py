@@ -55,7 +55,7 @@ class CoinGeckoClient(MarketDataProvider):
     async def get_price(self, symbol: str) -> float:
         coin_id = _symbol_to_coin_id(symbol)
         body = await self._request(
-            f"/simple/price",
+            "/simple/price",
             params={"ids": coin_id, "vs_currencies": "usd"},
         )
         if coin_id not in body:

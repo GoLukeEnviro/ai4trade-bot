@@ -1,4 +1,5 @@
 import responses
+
 from adapters.ai4trade_client import AI4TradeClient
 
 

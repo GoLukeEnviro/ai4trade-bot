@@ -1,7 +1,7 @@
 import logging
 from io import StringIO
 
-from core.whimsy import create_formatter, TextWhimsyFormatter
+from core.whimsy import TextWhimsyFormatter, create_formatter
 
 
 def test_text_whimsy_formatter_adds_emoji() -> None:

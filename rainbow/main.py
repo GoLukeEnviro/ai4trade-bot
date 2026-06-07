@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import signal as signal_mod
 import sys
 from contextlib import asynccontextmanager
-from typing import Any
 
 import uvicorn
 from fastapi import FastAPI
@@ -14,11 +12,6 @@ from core.whimsy import create_formatter, print_whimsy_banner
 from rainbow.collectors.base import BaseCollector
 from rainbow.config.settings import RainbowSettings
 from rainbow.distribution import api as api_module
-from rainbow.processor.scorer import RainbowScorer
-from rainbow.evaluation.llm_evaluator import LLMEvaluator
-from rainbow.processor.store import SignalStore
-from rainbow.market_data.bitget import BitgetClient
-from rainbow.distribution.webhooks import WebhookManager
 from rainbow.distribution.metrics import (
     ACTIVE_COLLECTORS,
     COLLECTOR_CYCLE_DURATION,
@@ -27,6 +20,11 @@ from rainbow.distribution.metrics import (
     SIGNALS_SCORED,
     WEBHOOKS_DISPATCHED,
 )
+from rainbow.distribution.webhooks import WebhookManager
+from rainbow.evaluation.llm_evaluator import LLMEvaluator
+from rainbow.market_data.bitget import BitgetClient
+from rainbow.processor.scorer import RainbowScorer
+from rainbow.processor.store import SignalStore
 
 log = logging.getLogger("rainbow")
 
@@ -86,10 +84,10 @@ class RainbowEngine:
 
     def _build_collectors(self) -> None:
         """Collectors basierend auf Settings instanziieren."""
+        from rainbow.collectors.news_collector import NewsCollector
+        from rainbow.collectors.reddit_collector import RedditCollector
         from rainbow.collectors.ta_collector import TACollector
         from rainbow.collectors.twitter_collector import TwitterCollector
-        from rainbow.collectors.reddit_collector import RedditCollector
-        from rainbow.collectors.news_collector import NewsCollector
 
         for name, cfg in self.settings.collectors.items():
             if not cfg.enabled:

@@ -1,6 +1,6 @@
 import config
-from exchanges.bitget_rest import BitgetRestClient
 from exchanges.base import ExchangeClient
+from exchanges.bitget_rest import BitgetRestClient
 
 
 def create_exchange(provider: str = None) -> ExchangeClient:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from html import escape
 from pathlib import Path
-import re
 
 from pptx import Presentation
 from pptx.util import Pt

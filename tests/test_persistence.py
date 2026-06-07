@@ -26,7 +26,7 @@ def test_save_signal_returns_id():
 
 def test_save_signal_with_trace_and_correlation_ids():
     repo = _repo_in_memory()
-    row_id = repo.save_signal(_make_signal(), trace_id="t-1", correlation_id="c-1")
+    repo.save_signal(_make_signal(), trace_id="t-1", correlation_id="c-1")
     rows = repo.get_recent_signals()
     assert rows[0]["trace_id"] == "t-1"
     assert rows[0]["correlation_id"] == "c-1"

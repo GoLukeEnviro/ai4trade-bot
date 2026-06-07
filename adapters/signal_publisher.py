@@ -1,8 +1,7 @@
 import logging
 
-from core.signal_model import Signal
-
 import config
+from core.signal_model import Signal
 
 log = logging.getLogger(__name__)
 
