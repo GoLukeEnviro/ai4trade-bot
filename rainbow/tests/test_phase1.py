@@ -215,7 +215,10 @@ class TestAPI:
         await store.start()
         settings = RainbowSettings(db_path=":memory:")
         app = create_app(store=store, settings=settings, enable_metrics=False)
-        return app, store
+        try:
+            yield app, store
+        finally:
+            await store.stop()
 
     @pytest.mark.anyio
     async def test_health_endpoint(self, app_and_store):
