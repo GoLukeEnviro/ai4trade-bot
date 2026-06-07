@@ -1,6 +1,7 @@
 """Tests für FeaturePipeline und PredictiveEngine."""
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -142,6 +143,7 @@ class TestFeaturePipelineAddFearGreed:
 class TestPredictiveEnginePredict:
     """Tests für PredictiveEngine.predict()."""
 
+    @patch("core.predictive.MODEL_DIR", Path("/tmp/nonexistent_model_dir_ai4trade"))
     def test_predict_returns_none_without_model(self):
         """Ohne Modell-Datei → None."""
         engine = PredictiveEngine()
@@ -151,6 +153,20 @@ class TestPredictiveEnginePredict:
         result = engine.predict(features)
 
         assert result is None
+
+    def test_predict_returns_dict_with_model(self):
+        """Mit Modell-Datei → dict mit direction und confidence."""
+        engine = PredictiveEngine()
+        features = _make_ohlcv(50)
+        features = FeaturePipeline().build_features(features)
+
+        result = engine.predict(features)
+
+        if result is not None:
+            assert "direction" in result
+            assert "confidence" in result
+            assert "model" in result
+            assert 0.0 <= result["confidence"] <= 1.0
 
     def test_predict_returns_none_on_empty_features(self):
         """Leerer DataFrame → None."""
