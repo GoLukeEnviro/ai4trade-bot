@@ -47,3 +47,8 @@ METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
 
 # Rainbow Engine integration
 RAINBOW_API_URL = os.getenv("RAINBOW_API_URL", "http://localhost:8000")
+
+# DeepSeek AI Evaluation
+DEEPSEEK_API_KEY = _secret_provider.get("DEEPSEEK_API_KEY")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")

@@ -12,6 +12,7 @@ from adapters.task_handler import TaskHandler
 from core.market_data import MarketData
 from core.market_signals import MarketSignalAnalyzer
 from core.sentiment import SentimentAnalyzer
+from core.ai_evaluator_bridge import AIEvaluatorBridge
 from core.strategy import Strategy
 from core.technical import TechnicalAnalyzer
 from core.whimsy import create_formatter, print_whimsy_banner
@@ -67,7 +68,7 @@ def _init_components() -> dict:
         "technical": TechnicalAnalyzer(),
         "market_signals": MarketSignalAnalyzer(),
         "sentiment_analyzer": SentimentAnalyzer(),
-        "strategy": Strategy(),
+        "strategy": Strategy(ai_bridge=AIEvaluatorBridge()),
         "heartbeat": Heartbeat(
             client=client,
             shutdown_event=shutdown_event,
