@@ -96,7 +96,11 @@ tzdata==2026.2
     # via pandas
 urllib3==2.7.0
     # via requests
-prometheus-fastapi-instrumentator==8.0.0
+prometheus-fastapi-instrumentator>=7.0.0
     # via prometheus http metrics
-prometheus-client==0.25.0
+prometheus-client>=0.21.0
     # via prometheus custom metrics
+pydantic-settings>=2.0
+    # via -r requirements.in
+aiosqlite>=0.20.0
+    # via -r requirements.in
