@@ -214,7 +214,7 @@ class TestAPI:
         store = SignalStore(":memory:")
         await store.start()
         settings = RainbowSettings(db_path=":memory:")
-        app = create_app(store=store, settings=settings)
+        app = create_app(store=store, settings=settings, enable_metrics=False)
         return app, store
 
     @pytest.mark.anyio
