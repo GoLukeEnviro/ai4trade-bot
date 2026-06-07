@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -197,6 +198,24 @@ def main() -> None:
     log.info("Output: %s", args.output)
 
     try:
+        # Check if we should use signal_outcomes from SQLite
+        db_path = os.getenv("DB_PATH", "storage/bot.db")
+        if Path(db_path).exists():
+            import sqlite3
+
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM signal_outcomes WHERE outcome IS NOT NULL")
+            count = cur.fetchone()[0]
+            conn.close()
+
+            if count >= 50:
+                log.info("Found %d signal outcomes in %s — using outcome-based training", count, db_path)
+                _train_from_outcomes(db_path, args.output, args.test_size)
+                sys.exit(0)
+            else:
+                log.info("Only %d outcomes (need 50+) — falling back to OHLCV training", count)
+
         df = load_data(args.data)
         validate_schema(df)
 
@@ -212,6 +231,62 @@ def main() -> None:
     except Exception as exc:
         log.error("Training failed: %s", exc)
         sys.exit(1)
+
+
+def _train_from_outcomes(db_path: str, output_dir: str, test_size: float) -> None:
+    """Train XGBoost from signal_outcomes table in SQLite."""
+    import sqlite3
+
+    from xgboost import XGBClassifier
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT pair, action, entry_price, exit_price, outcome
+        FROM signal_outcomes
+        WHERE outcome IS NOT NULL
+        ORDER BY created_at
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    if len(rows) < 50:
+        raise ValueError(f"Not enough outcomes for training: {len(rows)} (need 50+)")
+
+    # Simple feature set from outcomes
+    import numpy as np
+
+    X = []
+    y = []
+    for pair, action, entry, exit_price, outcome in rows:
+        action_enc = 1.0 if action == "BUY" else (0.0 if action == "SELL" else 0.5)
+        price_change = (exit_price - entry) / entry if entry > 0 else 0.0
+        X.append([action_enc, entry, price_change])
+        y.append(outcome)
+
+    X = np.array(X)
+    y = np.array(y)
+
+    split_idx = int(len(X) * (1 - test_size))
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+
+    model = XGBClassifier(
+        n_estimators=100,
+        max_depth=4,
+        learning_rate=0.1,
+        objective="binary:logistic",
+        eval_metric="logloss",
+        use_label_encoder=False,
+        random_state=42,
+    )
+    model.fit(X_train, y_train)
+
+    train_acc = model.score(X_train, y_train)
+    test_acc = model.score(X_test, y_test)
+    log.info("Outcome-based training: train_acc=%.4f test_acc=%.4f", train_acc, test_acc)
+
+    save_model(model, output_dir)
 
 
 if __name__ == "__main__":

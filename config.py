@@ -52,3 +52,6 @@ RAINBOW_API_URL = os.getenv("RAINBOW_API_URL", "http://localhost:8000")
 DEEPSEEK_API_KEY = _secret_provider.get("DEEPSEEK_API_KEY")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+# Outcome Tracking
+OUTCOME_WINDOW_HOURS = float(os.getenv("OUTCOME_WINDOW_HOURS", "4"))

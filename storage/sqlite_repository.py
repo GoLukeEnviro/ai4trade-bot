@@ -51,6 +51,18 @@ class SqliteSignalRepository(SignalRepository):
                     created_at TEXT DEFAULT (datetime('now'))
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS signal_outcomes (
+                    signal_id TEXT PRIMARY KEY,
+                    pair TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    entry_price REAL NOT NULL,
+                    exit_price REAL,
+                    outcome INTEGER,
+                    evaluated_at TEXT,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )
+            """)
             self._conn.commit()
 
     def save_signal(self, signal: Signal, trace_id: str = "", correlation_id: str = "") -> int:
@@ -106,6 +118,59 @@ class SqliteSignalRepository(SignalRepository):
             )
             self._conn.commit()
             return cur.lastrowid
+
+    def log_signal_with_id(self, signal: Signal) -> str:
+        """Log a signal and return a UUID for outcome tracking."""
+        import uuid
+
+        signal_id = str(uuid.uuid4())
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO signal_outcomes (signal_id, pair, action, entry_price)
+                   VALUES (?, ?, ?, ?)""",
+                (signal_id, signal.pair, signal.action, signal.price),
+            )
+            self._conn.commit()
+        return signal_id
+
+    def update_outcome(self, signal_id: str, exit_price: float, outcome: int) -> None:
+        """Update a signal's outcome after evaluation window expires."""
+        with self._lock:
+            self._conn.execute(
+                """UPDATE signal_outcomes
+                   SET exit_price = ?, outcome = ?, evaluated_at = datetime('now')
+                   WHERE signal_id = ?""",
+                (exit_price, outcome, signal_id),
+            )
+            self._conn.commit()
+
+    def get_pending_outcomes(self, max_age_hours: float = 4.0) -> list[dict]:
+        """Get signal outcomes that haven't been evaluated yet and are older than max_age_hours."""
+        with self._lock:
+            cur = self._conn.cursor()
+            cur.execute(
+                """SELECT signal_id, pair, action, entry_price, created_at
+                   FROM signal_outcomes
+                   WHERE outcome IS NULL
+                     AND created_at <= datetime('now', ?)""",
+                (f"-{max_age_hours} hours",),
+            )
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def get_outcomes_for_training(self, pair: str | None = None) -> list[dict]:
+        """Get evaluated outcomes for XGBoost training."""
+        with self._lock:
+            cur = self._conn.cursor()
+            if pair is not None:
+                cur.execute(
+                    "SELECT * FROM signal_outcomes WHERE outcome IS NOT NULL AND pair = ?",
+                    (pair,),
+                )
+            else:
+                cur.execute("SELECT * FROM signal_outcomes WHERE outcome IS NOT NULL")
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
 
     def close(self) -> None:
         with self._lock:

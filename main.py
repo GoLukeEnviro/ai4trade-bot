@@ -13,6 +13,7 @@ from core.market_data import MarketData
 from core.market_signals import MarketSignalAnalyzer
 from core.sentiment import SentimentAnalyzer
 from core.ai_evaluator_bridge import AIEvaluatorBridge
+from core.outcome_tracker import OutcomeTracker
 from core.strategy import Strategy
 from core.technical import TechnicalAnalyzer
 from core.whimsy import create_formatter, print_whimsy_banner
@@ -76,6 +77,10 @@ def _init_components() -> dict:
             message_queue=msg_queue,
         ),
         "task_handler": TaskHandler(msg_queue),
+        "outcome_tracker": OutcomeTracker(
+            repository=repository,
+            outcome_window_hours=config.OUTCOME_WINDOW_HOURS,
+        ),
     }
 
 
@@ -132,6 +137,9 @@ def run() -> None:
     hb_thread.start()
     log.info("Heartbeat-Thread gestartet")
 
+    outcome_tracker = components["outcome_tracker"]
+    outcome_tracker.start()
+
     repository.log_audit("bot_start", {"assets": config.ASSETS})
 
     sentiment_cache = {"score": 0.0, "confidence": 0.0}
@@ -163,6 +171,10 @@ def run() -> None:
                 )
 
                 if trade_signal.confidence >= config.CONFIDENCE_THRESHOLD:
+                    signal_id = repository.log_signal_with_id(trade_signal)
+                    log.info("Signal %s: %s %s confidence=%d price=%.2f",
+                             signal_id[:8], trade_signal.pair, trade_signal.action,
+                             trade_signal.confidence, trade_signal.price)
                     signal_router.route(trade_signal, targets=["rainbow_api", "log"])
 
             task_handler.process_pending()
