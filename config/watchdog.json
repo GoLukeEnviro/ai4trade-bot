@@ -1,0 +1,22 @@
+{
+  "components": [
+    {
+      "name": "legacy",
+      "heartbeat_path": "storage/heartbeat.json",
+      "stale_threshold_seconds": 120.0,
+      "cooldown_seconds": 300.0
+    },
+    {
+      "name": "rainbow",
+      "heartbeat_path": "storage/heartbeat_rainbow.json",
+      "stale_threshold_seconds": 120.0,
+      "cooldown_seconds": 300.0
+    }
+  ],
+  "telegram": {
+    "bot_token": null,
+    "chat_id": null,
+    "min_interval_seconds": 60.0,
+    "dry_run": true
+  }
+}
