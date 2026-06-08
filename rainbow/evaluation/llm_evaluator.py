@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import re
 import time
 from typing import TYPE_CHECKING
 
@@ -38,9 +40,86 @@ USER_PROMPT_TEMPLATE = (
     '  "ai_confidence": <float 0.0-1.0>,\n'
     '  "risk_level": "<low|medium|high>",\n'
     '  "market_regime": "<trending|ranging|volatile|quiet>",\n'
-    '  "reasoning": "<max 2 sentences, factual>"\n'
+    '  "reasoning": "<max 2 sentences, factual>",\n'
+    '  "ai_risk_score": <float 0.0-1.0>,\n'
+    '  "signal_quality": "<strong|usable|weak|contradictory>",\n'
+    '  "recommended_handling": "<store_only|summary|risk_summary|review_required|suppress>",\n'
+    '  "contradictions": [<strings>],\n'
+    '  "missing_context": [<strings>],\n'
+    '  "summary": "<one-line compact summary>"\n'
     "}}"
 )
+
+# Regex to extract JSON from markdown code blocks
+_MD_JSON_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
+
+
+def _safe_default_evaluation(model_used: str, latency_ms: int) -> AIEvaluation:
+    """Return a safe fallback evaluation when LLM response cannot be parsed."""
+    return AIEvaluation(
+        ai_confidence=0.0,
+        risk_level="medium",
+        market_regime="quiet",
+        reasoning="LLM response could not be parsed; using safe defaults.",
+        model_used=model_used,
+        evaluation_latency_ms=latency_ms,
+        ai_risk_score=0.5,
+        signal_quality="weak",
+        recommended_handling="store_only",
+        contradictions=[],
+        missing_context=[],
+        summary="",
+    )
+
+
+def _parse_llm_json(raw_content: str) -> dict | None:
+    """Try to extract a JSON dict from an LLM response string.
+
+    Strategy:
+    1. Direct ``json.loads``.
+    2. Extract from markdown code fences (```json ... ```).
+    3. Find the first ``{``…``}`` brace-delimited substring.
+    4. Give up and return ``None``.
+    """
+    # 1) Direct parse
+    try:
+        result = json.loads(raw_content)
+        if isinstance(result, dict):
+            return result
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # 2) Markdown code-block extraction
+    match = _MD_JSON_RE.search(raw_content)
+    if match:
+        try:
+            result = json.loads(match.group(1).strip())
+            if isinstance(result, dict):
+                return result
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # 3) Brace-delimited extraction (for text wrapping JSON)
+    start = raw_content.find("{")
+    if start != -1:
+        # Find the matching closing brace
+        depth = 0
+        for i in range(start, len(raw_content)):
+            if raw_content[i] == "{":
+                depth += 1
+            elif raw_content[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    candidate = raw_content[start : i + 1]
+                    try:
+                        result = json.loads(candidate)
+                        if isinstance(result, dict):
+                            return result
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                    break
+
+    return None
 
 
 class LLMEvaluator(BaseEvaluator):
@@ -53,8 +132,10 @@ class LLMEvaluator(BaseEvaluator):
         timeout_seconds: float = 5.0,
         threshold: float = 0.5,
         cache_ttl_seconds: int = 300,
+        fallback_model: str | None = None,
     ) -> None:
         self._model = model or os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
+        self._fallback_model = fallback_model
         self._temperature = temperature
         self._timeout = timeout_seconds
         self._threshold = threshold
@@ -63,6 +144,37 @@ class LLMEvaluator(BaseEvaluator):
             api_key=api_key or os.environ["DEEPSEEK_API_KEY"],
             base_url=base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
             timeout=timeout_seconds,
+        )
+
+    async def _call_model(self, model: str, prompt: str) -> str:
+        """Call a specific model and return the raw content string."""
+        response = await self._client.chat.completions.create(
+            model=model,
+            temperature=self._temperature,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return response.choices[0].message.content or ""
+
+    def _build_evaluation(
+        self, parsed: dict, model_used: str, latency_ms: int,
+    ) -> AIEvaluation:
+        """Construct an AIEvaluation from the parsed LLM dict."""
+        return AIEvaluation(
+            ai_confidence=float(parsed.get("ai_confidence", 0.0)),
+            risk_level=parsed.get("risk_level", "medium"),
+            market_regime=parsed.get("market_regime", "quiet"),
+            reasoning=str(parsed.get("reasoning", ""))[:300],
+            model_used=model_used,
+            evaluation_latency_ms=latency_ms,
+            ai_risk_score=float(parsed.get("ai_risk_score", 0.5)),
+            signal_quality=parsed.get("signal_quality", "usable"),
+            recommended_handling=parsed.get("recommended_handling", "store_only"),
+            contradictions=parsed.get("contradictions", []),
+            missing_context=parsed.get("missing_context", []),
+            summary=str(parsed.get("summary", "")),
         )
 
     async def evaluate(self, signal: CryptoSignal) -> AIEvaluation | None:
@@ -89,34 +201,69 @@ class LLMEvaluator(BaseEvaluator):
             raw_data_summary=summarize_raw_data(signal.raw_data),
         )
 
-        t_start = time.perf_counter()
-        try:
-            response = await self._client.chat.completions.create(
-                model=self._model,
-                temperature=self._temperature,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            latency_ms = int((time.perf_counter() - t_start) * 1000)
-            raw_content = response.choices[0].message.content or ""
-            parsed = json.loads(raw_content)
-            evaluation = AIEvaluation(
-                ai_confidence=float(parsed["ai_confidence"]),
-                risk_level=parsed["risk_level"],
-                market_regime=parsed["market_regime"],
-                reasoning=str(parsed["reasoning"])[:300],
-                model_used=self._model,
-                evaluation_latency_ms=latency_ms,
-            )
-            await self._cache.set(signal.asset, direction_str, evaluation)
-            logger.info(
-                "Evaluated %s: confidence=%.2f risk=%s regime=%s latency=%dms",
-                signal.asset, evaluation.ai_confidence, evaluation.risk_level,
-                evaluation.market_regime, latency_ms,
-            )
-            return evaluation
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("AI evaluation failed for %s: %s", signal.asset, exc)
-            return None
+        # Try primary model, then fallback model on timeout
+        models_to_try: list[tuple[str, bool]] = [(self._model, False)]
+        if self._fallback_model:
+            models_to_try.append((self._fallback_model, True))
+
+        last_model_used = self._model
+        for model_name, is_fallback in models_to_try:
+            t_start = time.perf_counter()
+            try:
+                raw_content = await asyncio.wait_for(
+                    self._call_model(model_name, prompt),
+                    timeout=self._timeout,
+                )
+                latency_ms = int((time.perf_counter() - t_start) * 1000)
+
+                parsed = _parse_llm_json(raw_content)
+                if parsed is not None:
+                    evaluation = self._build_evaluation(parsed, model_name, latency_ms)
+                else:
+                    logger.warning(
+                        "Could not parse LLM JSON for %s (model=%s)",
+                        signal.asset, model_name,
+                    )
+                    evaluation = _safe_default_evaluation(model_name, latency_ms)
+
+                await self._cache.set(signal.asset, direction_str, evaluation)
+                logger.info(
+                    "Evaluated %s: confidence=%.2f risk=%s regime=%s quality=%s latency=%dms%s",
+                    signal.asset, evaluation.ai_confidence, evaluation.risk_level,
+                    evaluation.market_regime, evaluation.signal_quality, latency_ms,
+                    " (fallback)" if is_fallback else "",
+                )
+                return evaluation
+
+            except asyncio.TimeoutError:
+                latency_ms = int((time.perf_counter() - t_start) * 1000)
+                last_model_used = model_name
+                logger.warning(
+                    "LLM timeout for %s (model=%s%s, %.1fs)",
+                    signal.asset, model_name,
+                    " fallback" if is_fallback else "",
+                    self._timeout,
+                )
+                if is_fallback or not self._fallback_model:
+                    # No more models to try — return safe default
+                    evaluation = _safe_default_evaluation(model_name, latency_ms)
+                    await self._cache.set(signal.asset, direction_str, evaluation)
+                    return evaluation
+                # else: try fallback model on next iteration
+                continue
+
+            except Exception as exc:  # noqa: BLE001
+                latency_ms = int((time.perf_counter() - t_start) * 1000)
+                logger.warning(
+                    "AI evaluation failed for %s (model=%s): %s",
+                    signal.asset, model_name, exc,
+                )
+                if is_fallback or not self._fallback_model:
+                    evaluation = _safe_default_evaluation(model_name, latency_ms)
+                    await self._cache.set(signal.asset, direction_str, evaluation)
+                    return evaluation
+                # else: try fallback model on next iteration
+                continue
+
+        # Should not reach here, but just in case
+        return _safe_default_evaluation(last_model_used, 0)
