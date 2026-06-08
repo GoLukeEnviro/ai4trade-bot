@@ -181,3 +181,30 @@ class TestTelegramSinkStats:
         sink.send(_make_alert())  # skipped (rate-limited)
         assert sink.stats["sent"] == 1
         assert sink.stats["skipped"] == 1
+
+
+class TestTelegramSinkHtmlEscaping:
+    """HTML escaping prevents injection in Telegram messages."""
+
+    def test_component_angle_brackets_escaped(self):
+        alert = _make_alert(component="<script>alert('xss')</script>")
+        msg = TelegramSink._format_message(alert)
+        assert "<script>" not in msg
+        assert "&lt;script&gt;" in msg
+
+    def test_message_ampersand_escaped(self):
+        alert = _make_alert(message="Price dropped & recovered")
+        msg = TelegramSink._format_message(alert)
+        assert "&amp;" in msg
+
+    def test_details_values_escaped(self):
+        alert = _make_alert(details={"error": "JSON <failed> at line &5"})
+        msg = TelegramSink._format_message(alert)
+        assert "&lt;failed&gt;" in msg
+        assert "&amp;" in msg
+
+    def test_normal_text_unchanged(self):
+        alert = _make_alert(component="legacy", message="Heartbeat stale")
+        msg = TelegramSink._format_message(alert)
+        assert "legacy" in msg
+        assert "Heartbeat stale" in msg

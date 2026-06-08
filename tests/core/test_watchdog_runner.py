@@ -87,13 +87,45 @@ class TestBuildSinks:
         assert len(sinks) == 2
         assert type(sinks[1]).__name__ == "TelegramSink"
 
-    def test_no_telegram_sink_for_empty_config(self):
-        sinks = _build_sinks({"telegram": {}})
+    def test_no_telegram_sink_for_missing_key(self):
+        sinks = _build_sinks({})
         assert len(sinks) == 1
+
+    def test_empty_telegram_config_creates_unconfigured_sink(self):
+        sinks = _build_sinks({"telegram": {}})
+        assert len(sinks) == 2
+        assert sinks[1]._is_configured() is False
 
     def test_telegram_dry_run_from_config(self):
         sinks = _build_sinks({"telegram": {"bot_token": "t", "chat_id": "c", "dry_run": True}})
         assert sinks[1]._dry_run is True
+
+
+class TestBuildSinksEnvFallback:
+    """Environment variable fallback for Telegram credentials."""
+
+    def test_env_fallback_bot_token(self):
+        with patch.dict("os.environ", {"WATCHDOG_TELEGRAM_BOT_TOKEN": "env-token"}, clear=False):
+            sinks = _build_sinks({"telegram": {"chat_id": "c"}})
+            assert sinks[1]._bot_token == "env-token"
+
+    def test_env_fallback_chat_id(self):
+        with patch.dict("os.environ", {"WATCHDOG_TELEGRAM_CHAT_ID": "env-chat"}, clear=False):
+            sinks = _build_sinks({"telegram": {"bot_token": "t"}})
+            assert sinks[1]._chat_id == "env-chat"
+
+    def test_config_takes_priority_over_env(self):
+        with patch.dict("os.environ", {"WATCHDOG_TELEGRAM_BOT_TOKEN": "env-token"}, clear=False):
+            sinks = _build_sinks({"telegram": {"bot_token": "config-token", "chat_id": "c"}})
+            assert sinks[1]._bot_token == "config-token"
+
+    def test_env_values_make_sink_configured(self):
+        with patch.dict("os.environ", {
+            "WATCHDOG_TELEGRAM_BOT_TOKEN": "env-tok",
+            "WATCHDOG_TELEGRAM_CHAT_ID": "env-chat",
+        }, clear=False):
+            sinks = _build_sinks({"telegram": {}})
+            assert sinks[1]._is_configured() is True
 
 
 class TestRunWatchdog:

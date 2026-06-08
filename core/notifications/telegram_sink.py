@@ -8,6 +8,7 @@ Graceful degradation: if bot token not configured, silently skips.
 import logging
 import time
 from datetime import datetime, timezone
+from html import escape
 from typing import Any
 
 import requests
@@ -114,14 +115,14 @@ class TelegramSink:
 
         lines = [
             f"{emoji} <b>[{severity_label}]</b> Watchdog Alert",
-            f"<b>Component:</b> <code>{alert.component}</code>",
-            f"<b>Message:</b> {alert.message}",
+            f"<b>Component:</b> <code>{escape(str(alert.component))}</code>",
+            f"<b>Message:</b> {escape(str(alert.message))}",
         ]
 
         if alert.details:
             detail_lines = []
             for k, v in alert.details.items():
-                detail_lines.append(f"  • {k}: {v}")
+                detail_lines.append(f"  • {escape(str(k))}: {escape(str(v))}")
             lines.append("<b>Details:</b>")
             lines.extend(detail_lines)
 

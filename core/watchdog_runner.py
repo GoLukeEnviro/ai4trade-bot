@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import signal
 import sys
 import time
@@ -35,11 +36,14 @@ def _build_sinks(config: dict[str, Any]) -> list:
     """Build notification sinks from config."""
     sinks: list = [LogNotificationSink()]
 
-    telegram_cfg = config.get("telegram", {})
-    if telegram_cfg:
+    telegram_cfg = config.get("telegram")
+    if telegram_cfg is not None:
+        # Config values first, then env fallback — keeps secrets out of config files
+        bot_token = telegram_cfg.get("bot_token") or os.getenv("WATCHDOG_TELEGRAM_BOT_TOKEN")
+        chat_id = telegram_cfg.get("chat_id") or os.getenv("WATCHDOG_TELEGRAM_CHAT_ID")
         sink = TelegramSink(
-            bot_token=telegram_cfg.get("bot_token"),
-            chat_id=telegram_cfg.get("chat_id"),
+            bot_token=bot_token,
+            chat_id=chat_id,
             min_interval_seconds=telegram_cfg.get("min_interval_seconds", 60.0),
             dry_run=telegram_cfg.get("dry_run", False),
             http_timeout=telegram_cfg.get("http_timeout", 10.0),
