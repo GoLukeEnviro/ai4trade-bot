@@ -297,7 +297,19 @@ def create_engine(settings: RainbowSettings) -> FastAPI:
 
         hb_writer.write(status="healthy")
         log.info("Rainbow Intelligence Engine gestartet")
+
+        # Periodic heartbeat refresh (every 30s) to keep Docker healthcheck happy
+        async def _heartbeat_loop() -> None:
+            while not engine._shutdown_event.is_set():
+                try:
+                    await asyncio.wait_for(engine._shutdown_event.wait(), timeout=30.0)
+                except asyncio.TimeoutError:
+                    hb_writer.write(status="healthy")
+
+        hb_task = asyncio.create_task(_heartbeat_loop(), name="heartbeat-writer")
+
         yield
+        hb_task.cancel()
         hb_writer.write(status="stopping")
         await engine.shutdown()
 

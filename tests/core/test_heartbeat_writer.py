@@ -1,5 +1,6 @@
 import json
 import time
+from unittest.mock import patch
 
 from core.heartbeat_writer import HeartbeatWriter, read_heartbeat
 
@@ -118,3 +119,11 @@ class TestReadHeartbeat:
         assert data is not None
         assert data["component"] == "legacy"
         assert "timestamp_unix" in data
+
+    def test_write_handles_oserror_gracefully(self, tmp_path):
+        hb = HeartbeatWriter(tmp_path / "hb.json", component="legacy")
+        with patch("pathlib.Path.write_text", side_effect=OSError("disk full")):
+            data = hb.write(status="healthy")
+            # Returns data dict even on failure, but file not written
+            assert data["status"] == "healthy"
+            assert hb.write_count == 0  # Not incremented on error
