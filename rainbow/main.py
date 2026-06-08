@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
+from core.heartbeat_writer import HeartbeatWriter
 from core.metrics import CANONICAL_SIGNALS_TOTAL
 from core.signals.adapters import from_rainbow_signal
 from core.signals.registry import CanonicalSignalRegistry
@@ -283,9 +284,21 @@ def create_engine(settings: RainbowSettings) -> FastAPI:
         api_module._store = engine.store
         api_module._settings = engine.settings
         api_module._engine = engine
+
+        # Heartbeat writer for Rainbow runtime health
+        hb_writer = HeartbeatWriter(
+            "storage/heartbeat_rainbow.json",
+            component="rainbow",
+            extra={"host": settings.api.host, "port": settings.api.port},
+        )
+        hb_writer.write(status="starting")
+
         await engine.start_background_tasks()
+
+        hb_writer.write(status="healthy")
         log.info("Rainbow Intelligence Engine gestartet")
         yield
+        hb_writer.write(status="stopping")
         await engine.shutdown()
 
     app = api_module.create_app(
