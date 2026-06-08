@@ -20,11 +20,11 @@ class FeaturePipeline:
 
         df = ohlcv.copy()
 
-        df["returns_1h"] = df["close"].pct_change(1)
-        df["returns_4h"] = df["close"].pct_change(4) if len(df) >= 4 else np.nan
-        df["returns_24h"] = df["close"].pct_change(24) if len(df) >= 24 else np.nan
+        df["returns_1h"] = df["close"].pct_change(1, fill_method=None)
+        df["returns_4h"] = df["close"].pct_change(4, fill_method=None) if len(df) >= 4 else np.nan
+        df["returns_24h"] = df["close"].pct_change(24, fill_method=None) if len(df) >= 24 else np.nan
 
-        df["log_returns"] = np.log1p(df["close"].pct_change())
+        df["log_returns"] = np.log1p(df["close"].pct_change(fill_method=None))
 
         df["volatility_20"] = df["log_returns"].rolling(20).std()
         df["volatility_50"] = df["log_returns"].rolling(50).std()
