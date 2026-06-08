@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 import config
 from adapters.heartbeat import Heartbeat
 from adapters.task_handler import TaskHandler
+from core.heartbeat_writer import HeartbeatWriter
 from core.market_data import MarketData
 from core.market_signals import MarketSignalAnalyzer
 from core.metrics import CANONICAL_RISK_BLOCKED, CANONICAL_SIGNALS_TOTAL
@@ -120,6 +121,11 @@ def run() -> None:
     log.info("AI4Trade Signal-Producer startet...")
     log.info("Assets: %s", config.ASSETS)
 
+    hb_writer = HeartbeatWriter("storage/heartbeat.json", component="legacy", extra={"mode": "signal-producer"})
+    hb_writer.write(status="starting")
+    last_hb_write = time.monotonic()
+    hb_write_interval = 30  # seconds
+
     if not config.AI4TRADE_TOKEN:
         log.error("AI4TRADE_TOKEN nicht gesetzt. Beende.")
         return
@@ -222,6 +228,12 @@ def run() -> None:
 
             task_handler.process_pending()
             publisher.flush_queue()
+
+            # Periodic file heartbeat for Docker healthcheck
+            now_mono = time.monotonic()
+            if now_mono - last_hb_write >= hb_write_interval:
+                hb_writer.write(status="running")
+                last_hb_write = now_mono
 
         except Exception as e:
             log.error("Signal-Loop Fehler: %s", e)
