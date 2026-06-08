@@ -54,7 +54,7 @@ class CanonicalSignalRegistry:
     def __init__(self, db_path: str = "storage/canonical_signals.db") -> None:
         self._db_path = db_path
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(db_path)
+        self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(_CREATE_TABLE_SQL)
         for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
