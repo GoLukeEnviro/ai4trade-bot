@@ -39,35 +39,62 @@ def _run_async(coro):
 class AIEvaluatorBridge:
     """Synchronous bridge to LLMEvaluator for legacy Strategy integration."""
 
-    def __init__(self) -> None:
+    def __init__(self, ollama_base_url: str | None = None) -> None:
         self._evaluator = None
         self._enabled = False
+        self._ollama_base_url = ollama_base_url
         self._init_evaluator()
 
     def _init_evaluator(self) -> None:
         """Try to initialize the LLMEvaluator. Graceful fallback if not possible."""
         api_key = os.getenv("DEEPSEEK_API_KEY")
-        if not api_key:
-            log.info("DEEPSEEK_API_KEY nicht gesetzt — AI-Bewertung deaktiviert (graceful fallback)")
-            return
+        if api_key:
+            try:
+                from rainbow.evaluation.llm_evaluator import LLMEvaluator
 
-        try:
-            from rainbow.evaluation.llm_evaluator import LLMEvaluator
+                model = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
+                base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
-            model = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
-            base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+                self._evaluator = LLMEvaluator(
+                    api_key=api_key,
+                    base_url=base_url,
+                    model=model,
+                    timeout_seconds=5.0,
+                    threshold=0.3,
+                )
+                self._enabled = True
+                log.info("AI-Bewertung aktiviert (model=%s)", model)
+                return
+            except Exception as exc:
+                log.warning("AI-Bewertung konnte nicht initialisiert werden: %s", exc)
 
-            self._evaluator = LLMEvaluator(
-                api_key=api_key,
-                base_url=base_url,
-                model=model,
-                timeout_seconds=5.0,
-                threshold=0.3,
-            )
-            self._enabled = True
-            log.info("AI-Bewertung aktiviert (model=%s)", model)
-        except Exception as exc:
-            log.warning("AI-Bewertung konnte nicht initialisiert werden: %s", exc)
+        # Ollama fallback: use when DEEPSEEK_API_KEY not set but OLLAMA_BASE_URL available
+        ollama_url = self._ollama_base_url or os.getenv("OLLAMA_BASE_URL", "")
+        if ollama_url:
+            try:
+                from rainbow.evaluation.llm_evaluator import LLMEvaluator
+
+                model = os.getenv("OLLAMA_MODEL", "deepseek-chat")
+                # Ollama exposes an OpenAI-compatible API at /v1
+                if not ollama_url.endswith("/v1"):
+                    base_url = ollama_url.rstrip("/") + "/v1"
+                else:
+                    base_url = ollama_url
+
+                self._evaluator = LLMEvaluator(
+                    api_key="ollama",  # Ollama doesn't need a real key
+                    base_url=base_url,
+                    model=model,
+                    timeout_seconds=10.0,
+                    threshold=0.3,
+                )
+                self._enabled = True
+                log.info("AI-Bewertung aktiviert via Ollama (model=%s, url=%s)", model, ollama_url)
+                return
+            except Exception as exc:
+                log.warning("Ollama AI-Bewertung konnte nicht initialisiert werden: %s", exc)
+
+        log.info("DEEPSEEK_API_KEY nicht gesetzt und kein Ollama — AI-Bewertung deaktiviert (graceful fallback)")
 
     @property
     def enabled(self) -> bool:

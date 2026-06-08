@@ -53,5 +53,12 @@ DEEPSEEK_API_KEY = _secret_provider.get("DEEPSEEK_API_KEY")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
+# Ollama fallback provider
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-chat")
+
+# Risk Gate
+MAX_DOWNDRAW_PCT = float(os.getenv("MAX_DOWNDRAW_PCT", "15"))
+
 # Outcome Tracking
 OUTCOME_WINDOW_HOURS = float(os.getenv("OUTCOME_WINDOW_HOURS", "4"))

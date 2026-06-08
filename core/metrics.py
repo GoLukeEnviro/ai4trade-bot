@@ -18,6 +18,11 @@ SIGNALS_BLOCKED = Counter(
     ["pair", "reason"],
 )
 
+LAST_SIGNAL_TIMESTAMP = Gauge(
+    "bot_last_signal_timestamp_seconds",
+    "Unix timestamp of last signal",
+)
+
 API_LATENCY_SECONDS = Histogram(
     "bot_api_latency_seconds",
     "API request latency",

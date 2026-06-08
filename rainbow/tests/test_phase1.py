@@ -298,7 +298,7 @@ class TestAPI:
             resp = await client.post("/signals/ingest", json=payload)
             assert resp.status_code == 200
             data = resp.json()
-            assert data["status"] == "ok"
+            assert data["status"] == "accepted"
             assert "signal_id" in data
 
             # Verify signal is retrievable via GET /signals/latest
@@ -330,4 +330,4 @@ class TestAPI:
             resp = await client.post("/signals/ingest", json={})
             assert resp.status_code == 200
             data = resp.json()
-            assert data["status"] == "ok"
+            assert data["status"] == "accepted"

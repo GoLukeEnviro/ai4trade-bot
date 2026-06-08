@@ -1,9 +1,11 @@
+import json
 import logging
 import os
 import queue
 import signal as signal_module
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from logging.handlers import RotatingFileHandler
 
 import config
@@ -12,7 +14,9 @@ from adapters.task_handler import TaskHandler
 from core.ai_evaluator_bridge import AIEvaluatorBridge
 from core.market_data import MarketData
 from core.market_signals import MarketSignalAnalyzer
+from core.metrics import LAST_SIGNAL_TIMESTAMP, SIGNALS_PUBLISHED, SIGNALS_TOTAL, get_metrics
 from core.outcome_tracker import OutcomeTracker
+from core.risk_gate import RiskGate
 from core.sentiment import SentimentAnalyzer
 from core.strategy import Strategy
 from core.technical import TechnicalAnalyzer
@@ -25,6 +29,56 @@ log = logging.getLogger("main")
 
 shutdown_event = threading.Event()
 msg_queue: queue.Queue = queue.Queue()
+
+# Global start time for uptime calculation
+_bot_start_time: float = 0.0
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    """Minimal HTTP handler returning JSON health + Prometheus metrics."""
+
+    def do_GET(self) -> None:
+        if self.path == "/health":
+            self._send_json_health()
+        elif self.path == "/metrics":
+            self._send_prometheus()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def _send_json_health(self) -> None:
+        uptime = time.time() - _bot_start_time if _bot_start_time else 0
+        payload = json.dumps({
+            "status": "healthy",
+            "uptime_seconds": round(uptime, 1),
+        })
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(payload.encode())
+
+    def _send_prometheus(self) -> None:
+        data = get_metrics()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, format, *args) -> None:  # noqa: ANN001
+        # Suppress default access logs
+        pass
+
+
+def _start_health_server(port: int) -> None:
+    """Start a minimal HTTP server for health + metrics on the given port."""
+    from socketserver import ThreadingMixIn
+
+    class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+        daemon_threads = True
+
+    server = ThreadedHTTPServer(("0.0.0.0", port), HealthHandler)
+    log.info("Health/Metrics-Server auf Port %d", port)
+    server.serve_forever()
 
 
 def setup_logging() -> None:
@@ -73,6 +127,7 @@ def _init_components() -> dict:
         "market_signals": MarketSignalAnalyzer(),
         "sentiment_analyzer": SentimentAnalyzer(),
         "strategy": Strategy(ai_bridge=AIEvaluatorBridge()),
+        "risk_gate": RiskGate(),
         "heartbeat": Heartbeat(
             client=client,
             shutdown_event=shutdown_event,
@@ -113,6 +168,9 @@ def run() -> None:
     Dieser Prozess erstellt Signale aus Markt- und Sentiment-Daten und leitet sie
     an den SignalRouter und den Publisher weiter.
     """
+    global _bot_start_time
+    _bot_start_time = time.time()
+
     print_whimsy_banner("AI4Trade Bot", "Signal-Producer fuer kluge Entscheidungen")
     setup_logging()
     log.info("AI4Trade Signal-Producer startet...")
@@ -120,6 +178,16 @@ def run() -> None:
 
     if not config.AI4TRADE_TOKEN:
         log.warning("AI4TRADE_TOKEN nicht gesetzt — laeuft im Rainbow-only Modus")
+
+    # Start health/metrics HTTP server in background
+    metrics_port = config.METRICS_PORT
+    health_thread = threading.Thread(
+        target=_start_health_server,
+        args=(metrics_port,),
+        daemon=True,
+        name="health_server",
+    )
+    health_thread.start()
 
     components = _init_components()
     repository = components["repository"]
@@ -130,6 +198,7 @@ def run() -> None:
     market_signal_analyzer = components["market_signals"]
     sentiment_analyzer = components["sentiment_analyzer"]
     strategy = components["strategy"]
+    risk_gate = components["risk_gate"]
     heartbeat = components["heartbeat"]
     task_handler = components["task_handler"]
 
@@ -178,6 +247,15 @@ def run() -> None:
                     market_context=market_context,
                 )
 
+                # Record signal generation metrics
+                SIGNALS_TOTAL.labels(pair=trade_signal.pair, action=trade_signal.action).inc()
+                LAST_SIGNAL_TIMESTAMP.set(time.time())
+
+                # Risk gate: check signal before routing
+                approved, reason = risk_gate.check(trade_signal, market_context)
+                if not approved:
+                    continue
+
                 if trade_signal.confidence >= config.CONFIDENCE_THRESHOLD:
                     signal_id = repository.log_signal_with_id(trade_signal)
                     log.info(
@@ -189,6 +267,9 @@ def run() -> None:
                         trade_signal.price,
                     )
                     signal_router.route(trade_signal, targets=["rainbow_api", "log"])
+
+                    # Record published metrics
+                    SIGNALS_PUBLISHED.labels(pair=trade_signal.pair, action=trade_signal.action).inc()
 
             task_handler.process_pending()
             publisher.flush_queue()

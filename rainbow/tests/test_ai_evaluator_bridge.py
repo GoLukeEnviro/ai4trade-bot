@@ -16,8 +16,9 @@ def _make_signal(action: str = "BUY", confidence: int = 75) -> Signal:
 
 def test_bridge_disabled_without_api_key() -> None:
     with patch.dict(os.environ, {}, clear=False):
-        # Ensure DEEPSEEK_API_KEY is not set
+        # Ensure DEEPSEEK_API_KEY and OLLAMA_BASE_URL are not set
         os.environ.pop("DEEPSEEK_API_KEY", None)
+        os.environ.pop("OLLAMA_BASE_URL", None)
         bridge = AIEvaluatorBridge()
         assert bridge.enabled is False
         result = bridge.evaluate(_make_signal())

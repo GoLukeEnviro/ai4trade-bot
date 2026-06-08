@@ -71,3 +71,96 @@ def test_main_import_does_not_start_runtime():
     from main import run
 
     assert callable(run)
+
+
+def test_signal_flows_through_risk_gate_approved():
+    """Signal above confidence threshold passes risk gate and is routed."""
+    from core.risk_gate import RiskGate
+
+    buy_signal = Signal(pair="BTC/USDT", action="BUY", confidence=80, price=50000.0, quantity=0.1)
+    gate = RiskGate(confidence_threshold=60)
+    market_context = {
+        "feed_health": {"is_healthy": True},
+        "risk_off": False,
+        "drawdown_pct": 0.0,
+    }
+
+    approved, reason = gate.check(buy_signal, market_context)
+    assert approved is True
+    assert reason == "approved"
+
+    # After gate approval, signal should be routed
+    mock_publisher = MagicMock()
+    mock_publisher.publish.return_value = True
+    router = SignalRouter(publisher=mock_publisher)
+    success = router.route(buy_signal, targets=["ai4trade"])
+    assert success is True
+    mock_publisher.publish.assert_called_once_with(buy_signal)
+
+
+def test_signal_flows_through_risk_gate_blocked():
+    """Signal below confidence threshold is blocked by risk gate."""
+    from core.risk_gate import RiskGate
+
+    low_signal = Signal(pair="BTC/USDT", action="BUY", confidence=30, price=50000.0, quantity=0.1)
+    gate = RiskGate(confidence_threshold=60)
+    market_context = {
+        "feed_health": {"is_healthy": True},
+        "risk_off": False,
+        "drawdown_pct": 0.0,
+    }
+
+    approved, reason = gate.check(low_signal, market_context)
+    assert approved is False
+    assert "confidence" in reason
+
+
+def test_signal_blocked_by_feed_health():
+    """Signal is blocked when feed is unhealthy."""
+    from core.risk_gate import RiskGate
+
+    signal = Signal(pair="ETH/USDT", action="BUY", confidence=80, price=3000.0, quantity=1.0)
+    gate = RiskGate(confidence_threshold=60)
+    market_context = {
+        "feed_health": {"is_healthy": False},
+        "risk_off": False,
+        "drawdown_pct": 0.0,
+    }
+
+    approved, reason = gate.check(signal, market_context)
+    assert approved is False
+    assert "feed unhealthy" in reason
+
+
+def test_signal_blocked_by_risk_off():
+    """Signal is blocked when risk_off is True."""
+    from core.risk_gate import RiskGate
+
+    signal = Signal(pair="SOL/USDT", action="BUY", confidence=75, price=100.0, quantity=10.0)
+    gate = RiskGate(confidence_threshold=60)
+    market_context = {
+        "feed_health": {"is_healthy": True},
+        "risk_off": True,
+        "drawdown_pct": 0.0,
+    }
+
+    approved, reason = gate.check(signal, market_context)
+    assert approved is False
+    assert "risk_off" in reason
+
+
+def test_signal_blocked_by_drawdown():
+    """Signal is blocked when drawdown exceeds max."""
+    from core.risk_gate import RiskGate
+
+    signal = Signal(pair="BTC/USDT", action="BUY", confidence=80, price=50000.0, quantity=0.1)
+    gate = RiskGate(confidence_threshold=60, max_drawdown_pct=15.0)
+    market_context = {
+        "feed_health": {"is_healthy": True},
+        "risk_off": False,
+        "drawdown_pct": 20.0,
+    }
+
+    approved, reason = gate.check(signal, market_context)
+    assert approved is False
+    assert "drawdown" in reason

@@ -87,38 +87,55 @@ def _register_routes(app: FastAPI) -> None:
 
     @app.post("/signals/ingest")
     async def signals_ingest(body: dict[str, Any]) -> dict[str, Any]:
-        """Internal endpoint: accept external signals (e.g. from legacy strategy)."""
+        """Internal endpoint: accept external signals (e.g. from legacy strategy).
+
+        Accepts a JSON body matching legacy Signal fields and converts via
+        SignalAdapter to CryptoSignal-compatible format before storing.
+        Returns 202 Accepted with signal_id.
+        """
         if _store is None:
             raise HTTPException(status_code=503, detail="Signal store not ready")
 
+        from core.signal_adapter import SignalAdapter
         from rainbow.models.signal import CryptoSignal, Direction, SignalType
 
+        # Detect legacy format (has 'pair' or 'action' keys) vs native Rainbow
+        is_legacy = "pair" in body or "action" in body
+
+        if is_legacy:
+            # Legacy Signal -> Rainbow via SignalAdapter
+            adapter = SignalAdapter()
+            legacy_signal = adapter.rainbow_dict_to_signal(body)
+            rainbow_dict = adapter.legacy_signal_to_rainbow(legacy_signal)
+        else:
+            rainbow_dict = body
+
         try:
-            signal_type_raw = body.get("signal_type", "technical")
+            signal_type_raw = rainbow_dict.get("signal_type", "technical")
             signal_type = SignalType(signal_type_raw)
         except ValueError:
             signal_type = SignalType.TECHNICAL
 
         try:
-            direction_raw = body.get("direction", "neutral")
+            direction_raw = rainbow_dict.get("direction", "neutral")
             direction = Direction(direction_raw)
         except ValueError:
             direction = Direction.NEUTRAL
 
         sig = CryptoSignal(
-            source=body.get("source", "external"),
-            asset=body.get("asset", "UNKNOWN"),
+            source=rainbow_dict.get("source", "external"),
+            asset=rainbow_dict.get("asset", "UNKNOWN"),
             signal_type=signal_type,
             direction=direction,
-            strength=float(body.get("strength", 0.0)),
-            confidence=float(body.get("confidence", 0.0)),
-            value=body.get("value"),
-            raw_data=body.get("raw_data"),
-            metadata=body.get("metadata", {}),
+            strength=float(rainbow_dict.get("strength", 0.0)),
+            confidence=float(rainbow_dict.get("confidence", 0.0)),
+            value=rainbow_dict.get("value"),
+            raw_data=rainbow_dict.get("raw_data"),
+            metadata=rainbow_dict.get("metadata", {}),
         )
 
         await _store.save(sig)
-        return {"status": "ok", "signal_id": sig.signal_id}
+        return {"status": "accepted", "signal_id": sig.signal_id}
 
     @app.get("/metrics")
     async def metrics() -> dict[str, Any]:
