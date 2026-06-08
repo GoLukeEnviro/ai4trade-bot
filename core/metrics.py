@@ -63,6 +63,17 @@ BOT_INFO = Gauge(
     ["mode", "version"],
 )
 
+CANONICAL_SIGNALS_TOTAL = Counter(
+    "bot_canonical_signals_total",
+    "Canonical signals processed",
+    ["class", "asset"],
+)
+
+CANONICAL_RISK_BLOCKED = Counter(
+    "bot_canonical_risk_blocked_total",
+    "Canonical signals blocked by risk gate",
+    ["reason"],
+)
 
 def get_metrics() -> bytes:
     """Prometheus-Export-Format generieren."""

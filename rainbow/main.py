@@ -8,6 +8,9 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
+from core.metrics import CANONICAL_SIGNALS_TOTAL
+from core.signals.adapters import from_rainbow_signal
+from core.signals.registry import CanonicalSignalRegistry
 from core.whimsy import create_formatter, print_whimsy_banner
 from rainbow.collectors.base import BaseCollector
 from rainbow.config.settings import RainbowSettings
@@ -42,6 +45,7 @@ class RainbowEngine:
         self.collectors: list[BaseCollector] = []
         self._tasks: list[asyncio.Task[None]] = []
         self._shutdown_event = asyncio.Event()
+        self.canonical_registry: CanonicalSignalRegistry | None = None
 
     async def initialize(self) -> None:
         """Store und Scorer initialisieren, Collectors instanziieren."""
@@ -54,6 +58,10 @@ class RainbowEngine:
 
         self.webhooks = WebhookManager()
         api_module._webhook_manager = self.webhooks
+
+        # Canonical side-write registry (Issue #17)
+        self.canonical_registry = CanonicalSignalRegistry()
+        api_module._canonical_registry = self.canonical_registry
 
         ACTIVE_COLLECTORS.set(len(self.collectors))
 
@@ -155,6 +163,7 @@ class RainbowEngine:
                     interval_seconds=cfg.interval_seconds,
                     shutdown_event=self._shutdown_event,
                     webhooks=self.webhooks,
+                    canonical_registry=self.canonical_registry,
                 ),
                 name=f"collector-{collector.name}",
             )
@@ -191,6 +200,7 @@ async def _run_collector_loop(
     interval_seconds: int,
     shutdown_event: asyncio.Event,
     webhooks: WebhookManager | None = None,
+    canonical_registry: CanonicalSignalRegistry | None = None,
 ) -> None:
     """Endlosschleife: sammeln, bewerten, speichern, webhooks dispatchen. Graceful degradation bei Fehlern."""
     log.info("Collector-Loop gestartet: '%s' (Interval: %ds)", collector.name, interval_seconds)
@@ -206,6 +216,17 @@ async def _run_collector_loop(
                 for sig in scored:
                     SIGNALS_SCORED.labels(asset=sig.asset).inc()
                     await store.save(sig)
+
+                    # --- Canonical side-write (Issue #17) ---
+                    try:
+                        if canonical_registry is not None:
+                            envelope = from_rainbow_signal(sig)
+                            canonical_registry.append(envelope)
+                            CANONICAL_SIGNALS_TOTAL.labels(
+                                **{"class": envelope.signal_class.value, "asset": sig.asset},
+                            ).inc()
+                    except Exception:
+                        pass  # side-write must not break the pipeline
                 if webhooks:
                     for sig in scored:
                         try:

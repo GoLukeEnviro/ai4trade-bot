@@ -14,6 +14,7 @@ _settings: Any = None
 _engine: Any = None
 _collector_status: dict[str, str] = {}
 _webhook_manager: WebhookManager | None = None
+_canonical_registry: Any = None
 
 
 class WebhookSubscribeRequest(BaseModel):
@@ -132,3 +133,64 @@ def _register_routes(app: FastAPI) -> None:
             raise HTTPException(status_code=503, detail="Webhook manager not ready")
 
         return _webhook_manager.list_subscriptions()
+
+    # --- Canonical Signal Endpoints (Issue #18) ---
+
+    @app.get("/signals/canonical/latest")
+    async def canonical_signals_latest(
+        asset: str | None = Query(default=None),
+        signal_class: str | None = Query(default=None, alias="class"),
+        limit: int = Query(default=50, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        if _canonical_registry is None:
+            raise HTTPException(status_code=503, detail="Canonical registry not ready")
+
+        from core.signals.envelope import SignalClass as SC
+
+        sc = None
+        if signal_class is not None:
+            try:
+                sc = SC(signal_class)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid signal class: {signal_class}",
+                )
+        return _canonical_registry.query_latest(asset=asset, signal_class=sc, limit=limit)
+
+    @app.get("/risk/latest")
+    async def risk_latest(
+        limit: int = Query(default=50, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        if _canonical_registry is None:
+            raise HTTPException(status_code=503, detail="Canonical registry not ready")
+
+        from core.signals.envelope import SignalClass as SC
+
+        risk_signals = _canonical_registry.query_latest(
+            signal_class=SC.RISK, limit=limit,
+        )
+        dq_signals = _canonical_registry.query_latest(
+            signal_class=SC.DATA_QUALITY, limit=limit,
+        )
+        combined = risk_signals + dq_signals
+        combined.sort(key=lambda s: s.get("created_at", ""), reverse=True)
+        return combined[:limit]
+
+    @app.get("/context/agent-summary")
+    async def agent_summary() -> dict[str, str]:
+        from core.signals.summarizer import format_signal_summary
+
+        if _canonical_registry is None:
+            raise HTTPException(status_code=503, detail="Canonical registry not ready")
+
+        latest = _canonical_registry.query_latest(limit=5)
+        lines: list[str] = []
+        for entry in latest:
+            from core.signals.envelope import CanonicalSignalEnvelope
+
+            env = CanonicalSignalEnvelope(**entry)
+            lines.append(format_signal_summary(env))
+
+        summary_text = "\n".join(lines) if lines else "No signals available."
+        return {"summary": summary_text}

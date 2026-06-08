@@ -45,6 +45,24 @@ class EvaluationConfig(BaseModel):
     threshold: float = 0.5
     cache_ttl_seconds: int = 300
 
+    # Ollama Cloud / DeepSeek V4 Pro provider fields
+    provider: str = "ollama_cloud"
+    base_url_env: str = "RAINBOW_LLM_BASE_URL"
+    api_key_env: str = "RAINBOW_LLM_API_KEY"
+    primary_model: str = "deepseek-v4-pro"
+    fallback_model: str = "deepseek-v4-flash"
+    summary_temperature: float = 0.15
+    max_reviews_per_cycle: int = 10
+
+    # Critic section
+    critic_enabled: bool = False
+    critic_trigger_min_priority: str = "high"
+    critic_trigger_min_risk_score: float = 0.7
+
+    def get_effective_model(self) -> str:
+        """Return primary_model, falling back to the legacy model field."""
+        return self.primary_model or self.model
+
 
 class MarketDataConfig(BaseModel):
     bitget_base_url: str = "https://api.bitget.com"

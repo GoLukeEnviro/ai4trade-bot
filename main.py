@@ -11,7 +11,19 @@ from adapters.heartbeat import Heartbeat
 from adapters.task_handler import TaskHandler
 from core.market_data import MarketData
 from core.market_signals import MarketSignalAnalyzer
+from core.metrics import CANONICAL_RISK_BLOCKED, CANONICAL_SIGNALS_TOTAL
 from core.sentiment import SentimentAnalyzer
+from core.signals.adapters import from_legacy_signal
+from core.signals.envelope import (
+    CanonicalSignalEnvelope,
+    DataQuality,
+    DataQualityStatus,
+    SignalClass,
+    SignalDirection,
+    SignalPriority,
+)
+from core.signals.registry import CanonicalSignalRegistry
+from core.signals.risk_gate import RiskGate
 from core.strategy import Strategy
 from core.technical import TechnicalAnalyzer
 from core.whimsy import create_formatter, print_whimsy_banner
@@ -72,6 +84,8 @@ def _init_components() -> dict:
             message_queue=msg_queue,
         ),
         "task_handler": TaskHandler(msg_queue),
+        "canonical_registry": CanonicalSignalRegistry(),
+        "risk_gate": RiskGate(),
     }
 
 
@@ -121,6 +135,8 @@ def run() -> None:
     strategy = components["strategy"]
     heartbeat = components["heartbeat"]
     task_handler = components["task_handler"]
+    canonical_registry = components["canonical_registry"]
+    risk_gate = components["risk_gate"]
 
     signal_module.signal(signal_module.SIGINT, graceful_shutdown)
     signal_module.signal(signal_module.SIGTERM, graceful_shutdown)
@@ -148,6 +164,35 @@ def run() -> None:
                         asset,
                         market_context.get("no_trade_reason", "unknown"),
                     )
+                    # Emit DATA_QUALITY canonical signal
+                    try:
+                        dq_envelope = CanonicalSignalEnvelope(
+                            signal_class=SignalClass.DATA_QUALITY,
+                            subtype="feed_health",
+                            source="core.market_signals",
+                            asset=asset,
+                            direction=SignalDirection.NEUTRAL,
+                            confidence=0.9,
+                            risk_score=0.3,
+                            priority=SignalPriority.HIGH,
+                            reason_codes=["feed_degraded"],
+                            features=market_context.get("feed_health", {}),
+                            data_quality=DataQuality(
+                                status=DataQualityStatus.DEGRADED,
+                            ),
+                            actionability={"can_alert": True},
+                            invalidation={"max_age_seconds": 3600, "conditions": []},
+                            raw_refs=[],
+                        )
+                        approved, reason, dq_mod = risk_gate.evaluate(dq_envelope)
+                        canonical_registry.append(dq_mod)
+                        CANONICAL_SIGNALS_TOTAL.labels(
+                            **{"class": dq_mod.signal_class.value, "asset": asset},
+                        ).inc()
+                        if not approved:
+                            CANONICAL_RISK_BLOCKED.labels(reason=reason).inc()
+                    except Exception as dq_err:
+                        log.debug("DATA_QUALITY side-write error: %s", dq_err)
 
                 sentiment_cache, last_sentiment_time = _fetch_sentiment(
                     sentiment_analyzer, sentiment_cache, last_sentiment_time,
@@ -158,6 +203,19 @@ def run() -> None:
                     ta_result["indicators"]["price"], 0.1,
                     market_context=market_context,
                 )
+
+                # --- Canonical side-write (Issue #16) ---
+                try:
+                    envelope = from_legacy_signal(trade_signal, market_context)
+                    approved, reason, mod_envelope = risk_gate.evaluate(envelope)
+                    canonical_registry.append(mod_envelope)
+                    CANONICAL_SIGNALS_TOTAL.labels(
+                        **{"class": mod_envelope.signal_class.value, "asset": asset},
+                    ).inc()
+                    if not approved:
+                        CANONICAL_RISK_BLOCKED.labels(reason=reason).inc()
+                except Exception as cs_err:
+                    log.debug("Canonical side-write error: %s", cs_err)
 
                 if trade_signal.confidence >= config.CONFIDENCE_THRESHOLD:
                     signal_router.route(trade_signal, targets=["ai4trade", "log"])
