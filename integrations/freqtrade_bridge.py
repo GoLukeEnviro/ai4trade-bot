@@ -18,9 +18,11 @@ Safety invariants:
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from core.signals.envelope import (
@@ -106,6 +108,11 @@ class FreqtradeBridge:
     min_interval_seconds : float
         Minimum wall-clock seconds between advisory calls for the same pair
         to prevent flooding (default 30).
+    cache_file : str | None
+        Optional path to persist the in-memory cache to JSON. If provided, the
+        cache is loaded on startup and saved on each write. If the file is
+        missing or corrupted, an empty cache is used (no crash). Default is
+        None (no persistence, backward compatible).
     """
 
     def __init__(
@@ -117,17 +124,23 @@ class FreqtradeBridge:
         cache_ttl_seconds: float = 60.0,
         min_interval_seconds: float = 30.0,
         use_confidence_modulation: bool = True,
+        cache_file: str | None = None,
     ) -> None:
         self._registry = registry
         self.confidence_threshold = confidence_threshold
         self.risk_threshold = risk_threshold
         self.cache_ttl_seconds = cache_ttl_seconds
         self.min_interval_seconds = min_interval_seconds
+        self._cache_file = Path(cache_file) if cache_file else None
 
         # Per-pair caches: {pair: {"result": dict, "time": float}}
         self._cache: dict[str, dict[str, Any]] = {}
         # Per-pair rate-limit timestamps: {pair: float}
         self._last_call_time: dict[str, float] = {}
+
+        # Load cache from file if persistence is enabled
+        if self._cache_file is not None:
+            self._load_cache_from_file()
 
         # Confidence modulation — only if available and enabled
         self._modulator: ConfidenceModulator | None = None
@@ -373,4 +386,53 @@ class FreqtradeBridge:
     def _cache_and_return(self, pair: str, result: dict[str, Any]) -> dict[str, Any]:
         """Store result in cache and return it."""
         self._cache[pair] = {"result": result, "time": time.monotonic()}
+        if self._cache_file is not None:
+            self._save_cache_to_file()
         return result
+
+    def _save_cache_to_file(self) -> None:
+        """Persist the in-memory cache to the configured JSON file.
+
+        Best-effort: logs a warning on failure but never raises.
+        Only called when ``self._cache_file`` is not None.
+        """
+        cache_file = self._cache_file
+        assert cache_file is not None  # guaranteed by caller
+        try:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            tmp = cache_file.with_suffix(".tmp")
+            with tmp.open("w", encoding="utf-8") as fh:
+                json.dump(self._cache, fh, default=str)
+            tmp.replace(cache_file)
+        except Exception as exc:
+            log.warning("Failed to save cache to %s: %s", cache_file, exc)
+
+    def _load_cache_from_file(self) -> None:
+        """Load cache from the configured JSON file into memory.
+
+        If the file is missing, corrupted, or unreadable, the in-memory
+        cache remains empty (no crash).
+        Only called when ``self._cache_file`` is not None.
+        """
+        cache_file = self._cache_file
+        assert cache_file is not None  # guaranteed by caller
+        try:
+            if not cache_file.exists():
+                log.info("Cache file %s not found; starting with empty cache", cache_file)
+                return
+            with cache_file.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                self._cache = data
+                log.info("Loaded cache from %s (%d entries)", cache_file, len(data))
+            else:
+                log.warning(
+                    "Cache file %s has invalid structure; starting empty",
+                    cache_file,
+                )
+        except (json.JSONDecodeError, OSError, ValueError) as exc:
+            log.warning(
+                "Failed to load cache from %s; starting empty: %s",
+                cache_file,
+                exc,
+            )

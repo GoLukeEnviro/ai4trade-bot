@@ -24,16 +24,31 @@ class PriceProvider(Protocol):
 
 
 class StaticPriceProvider:
-    """Returns a fixed price for any asset.
+    """Stub price provider returning 0.0. Replace with real exchange feed for production.
 
     Useful for testing and dry-run modes where no live data is available.
+    Callers can detect this is a stub via ``is_stub()``.
     """
+
+    _warned: bool = False
 
     def __init__(self, price_map: dict[str, float] | None = None, default: float = 0.0) -> None:
         self._price_map = price_map or {}
         self._default = default
 
+    @classmethod
+    def is_stub(cls) -> bool:
+        """Return True to indicate this is a stub provider, not a real exchange feed."""
+        return True
+
     def get_price(self, asset: str, at_time: datetime) -> float | None:
+        if not StaticPriceProvider._warned:
+            log.warning(
+                "StaticPriceProvider is a stub returning %.1f. "
+                "Replace with a real exchange feed for production.",
+                self._default,
+            )
+            StaticPriceProvider._warned = True
         return self._price_map.get(asset, self._default)
 
 
