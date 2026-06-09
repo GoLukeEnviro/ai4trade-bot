@@ -202,6 +202,21 @@ class CanonicalSignalRegistry:
         data["transition_reason"] = reason
         return data
 
+    def cleanup_expired(self, max_age_hours: int = 24) -> int:
+        """Delete signals older than max_age_hours. Returns count of deleted rows."""
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM canonical_signals WHERE created_at < datetime('now', ?)",
+                (f"-{max_age_hours} hours",),
+            )
+            self._conn.commit()
+            return cur.rowcount
+
+    def vacuum(self) -> None:
+        """Run VACUUM on the SQLite database to reclaim space."""
+        with self._lock:
+            self._conn.execute("VACUUM")
+
     def close(self) -> None:
         with self._lock:
             self._conn.close()
