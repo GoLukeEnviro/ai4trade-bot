@@ -9,6 +9,9 @@ Safety invariants:
   - can_execute MUST be False (enforced by envelope model, re-checked here)
   - dry_run_only MUST be True (enforced by envelope model, re-checked here)
   - HOLD is always the safe fallback on any error or policy violation
+  - Confidence modulation ONLY reduces confidence, never increases it
+  - final_confidence MUST be <= raw_confidence (safety assertion)
+  - HOLD signal MUST remain HOLD after modulation
   - No secrets in logs or output
   - No network access
 """
@@ -27,7 +30,40 @@ from core.signals.envelope import (
 )
 from core.signals.registry import CanonicalSignalRegistry
 
+# Graceful import: ConfidenceModulator is optional
+try:
+    from core.signals.confidence_modulation import (
+        ConfidenceBand,
+        ConfidenceModulator,
+    )
+
+    _MODULATION_AVAILABLE = True
+except ImportError:
+    ConfidenceModulator = None  # type: ignore[assignment, misc]
+    ConfidenceBand = None  # type: ignore[assignment, misc]
+    _MODULATION_AVAILABLE = False
+
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Risk level mapping
+# ---------------------------------------------------------------------------
+
+def _risk_level_from_score(risk_score: float) -> str:
+    """Map a numeric risk_score (0–1) to a risk_level string.
+
+    The ConfidenceModulator uses string risk levels ('low', 'medium',
+    'high', 'extreme') while the envelope uses a numeric risk_score.
+    This maps the numeric score to the categorical string.
+    """
+    if risk_score >= 0.9:
+        return "extreme"
+    if risk_score >= 0.7:
+        return "high"
+    if risk_score >= 0.4:
+        return "medium"
+    return "low"
+
 
 # ---------------------------------------------------------------------------
 # Direction mapping
@@ -80,6 +116,7 @@ class FreqtradeBridge:
         risk_threshold: float = 0.7,
         cache_ttl_seconds: float = 60.0,
         min_interval_seconds: float = 30.0,
+        use_confidence_modulation: bool = True,
     ) -> None:
         self._registry = registry
         self.confidence_threshold = confidence_threshold
@@ -91,6 +128,18 @@ class FreqtradeBridge:
         self._cache: dict[str, dict[str, Any]] = {}
         # Per-pair rate-limit timestamps: {pair: float}
         self._last_call_time: dict[str, float] = {}
+
+        # Confidence modulation — only if available and enabled
+        self._modulator: ConfidenceModulator | None = None
+        if use_confidence_modulation and _MODULATION_AVAILABLE:
+            self._modulator = ConfidenceModulator()
+            log.info("Confidence modulation enabled in bridge pipeline")
+        else:
+            if use_confidence_modulation and not _MODULATION_AVAILABLE:
+                log.warning(
+                    "ConfidenceModulator not available; "
+                    "bridge will use raw confidence"
+                )
 
     # ------------------------------------------------------------------
     # Public API
@@ -204,19 +253,121 @@ class FreqtradeBridge:
                 f"high_risk:{envelope.risk_score:.3f}>={self.risk_threshold}"
             )
 
-        # 7. Direction mapping
+        # 7. Confidence modulation (between confidence check and direction mapping)
+        raw_confidence = envelope.confidence
+        final_confidence = raw_confidence
+        modulation_reasons: list[str] = []
+        confidence_band: str | None = None
+
+        if self._modulator is not None:
+            try:
+                evaluation_data = self._build_evaluation_data(envelope)
+                modulated = self._modulator.modulate(evaluation_data)
+                final_confidence = modulated.final_confidence
+                modulation_reasons = modulated.confidence_modulation_reason
+                confidence_band = modulated.confidence_band.value
+
+                # SAFETY ASSERTION: final_confidence MUST be <= raw_confidence
+                if final_confidence > raw_confidence:
+                    log.error(
+                        "SAFETY: modulation increased confidence "
+                        "(final=%.6f > raw=%.6f) for signal %s — "
+                        "reverting to raw",
+                        final_confidence,
+                        raw_confidence,
+                        envelope.id,
+                    )
+                    final_confidence = raw_confidence
+                    modulation_reasons.append(
+                        "safety_revert: final_confidence exceeded raw"
+                    )
+                    confidence_band = None
+
+                # If confidence band is BLOCKED → force HOLD
+                if modulated.confidence_band == ConfidenceBand.BLOCKED:
+                    log.info(
+                        "Confidence modulation BLOCKED signal %s "
+                        "(raw=%.3f → final=%.3f, reason=%s)",
+                        envelope.id,
+                        raw_confidence,
+                        final_confidence,
+                        modulation_reasons,
+                    )
+                    return {
+                        "action": "hold",
+                        "reason": "modulation_blocked",
+                        "confidence": final_confidence,
+                        "risk_score": envelope.risk_score,
+                        "source": envelope.source,
+                        "timestamp": datetime.now(UTC).isoformat(),
+                        "signal_id": envelope.id,
+                        "direction": envelope.direction.value,
+                        "asset": envelope.asset,
+                        "modulation_reasons": modulation_reasons,
+                        "confidence_band": confidence_band,
+                        "raw_confidence": raw_confidence,
+                    }
+
+                log.info(
+                    "Confidence modulation for signal %s: "
+                    "raw=%.3f → final=%.3f, band=%s, reasons=%s",
+                    envelope.id,
+                    raw_confidence,
+                    final_confidence,
+                    confidence_band,
+                    modulation_reasons,
+                )
+
+            except Exception as exc:
+                log.warning(
+                    "Confidence modulation failed for signal %s, "
+                    "falling back to raw confidence: %s",
+                    envelope.id,
+                    exc,
+                )
+                final_confidence = raw_confidence
+                modulation_reasons = [f"modulation_error:{exc!r}"]
+
+        # 8. Direction mapping (HOLD stays HOLD after modulation)
         action = _DIRECTION_MAP.get(envelope.direction, "hold")
 
-        return {
+        result: dict[str, Any] = {
             "action": action,
             "reason": f"signal:{envelope.id}",
-            "confidence": envelope.confidence,
+            "confidence": final_confidence,
             "risk_score": envelope.risk_score,
             "source": envelope.source,
             "timestamp": datetime.now(UTC).isoformat(),
             "signal_id": envelope.id,
             "direction": envelope.direction.value,
             "asset": envelope.asset,
+        }
+
+        # Include modulation metadata when modulation was applied
+        if self._modulator is not None:
+            result["raw_confidence"] = raw_confidence
+            if modulation_reasons:
+                result["modulation_reasons"] = modulation_reasons
+            if confidence_band is not None:
+                result["confidence_band"] = confidence_band
+
+        return result
+
+    @staticmethod
+    def _build_evaluation_data(
+        envelope: CanonicalSignalEnvelope,
+    ) -> dict[str, Any]:
+        """Build evaluation-like data dict from an envelope for the modulator.
+
+        The ConfidenceModulator accepts dicts with keys like
+        'ai_confidence', 'risk_level', 'warnings', and
+        'data_completeness_score'. We map envelope fields to these keys.
+        """
+        return {
+            "ai_confidence": envelope.confidence,
+            "risk_level": _risk_level_from_score(envelope.risk_score),
+            "warnings": [],
+            "data_completeness_score": None,
         }
 
     def _cache_and_return(self, pair: str, result: dict[str, Any]) -> dict[str, Any]:
