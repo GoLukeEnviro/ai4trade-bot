@@ -45,11 +45,12 @@ class TestQueryOpen:
         registry.append(env)
         # Manually set created_at to 2h ago by inserting directly
         two_hours_ago = str(datetime.now(UTC) - timedelta(hours=2))
-        registry._conn.execute(
-            "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
-            (two_hours_ago, env.id),
-        )
-        registry._conn.commit()
+        with registry._lock:
+            registry._conn.execute(
+                "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
+                (two_hours_ago, env.id),
+            )
+            registry._conn.commit()
 
         open_signals = registry.query_open(min_age_seconds=3600)
         assert len(open_signals) == 1
@@ -72,11 +73,12 @@ class TestQueryOpen:
         registry.transition(env.id, SignalLifecycle.EXPIRED, "too_old")
         # Set old timestamp
         two_hours_ago = str(datetime.now(UTC) - timedelta(hours=2))
-        registry._conn.execute(
-            "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
-            (two_hours_ago, env.id),
-        )
-        registry._conn.commit()
+        with registry._lock:
+            registry._conn.execute(
+                "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
+                (two_hours_ago, env.id),
+            )
+            registry._conn.commit()
 
         open_signals = registry.query_open(min_age_seconds=3600)
         assert len(open_signals) == 0
@@ -87,11 +89,13 @@ class TestQueryOpen:
         for i in range(5):
             env = _make_envelope(asset=f"ASSET{i}")
             registry.append(env)
-            registry._conn.execute(
-                "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
-                (two_hours_ago, env.id),
-            )
-        registry._conn.commit()
+            with registry._lock:
+                registry._conn.execute(
+                    "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
+                    (two_hours_ago, env.id),
+                )
+        with registry._lock:
+            registry._conn.commit()
 
         open_signals = registry.query_open(min_age_seconds=3600, limit=3)
         assert len(open_signals) == 3
@@ -104,11 +108,12 @@ class TestQueryOpen:
         risk = _make_envelope(signal_class=SignalClass.RISK, asset="ETH/USDT")
         registry.append(entry)
         registry.append(risk)
-        registry._conn.execute(
-            "UPDATE canonical_signals SET created_at = ?",
-            (two_hours_ago,),
-        )
-        registry._conn.commit()
+        with registry._lock:
+            registry._conn.execute(
+                "UPDATE canonical_signals SET created_at = ?",
+                (two_hours_ago,),
+            )
+            registry._conn.commit()
 
         open_signals = registry.query_open(min_age_seconds=3600, signal_class=SignalClass.ENTRY)
         assert len(open_signals) == 1
@@ -143,11 +148,12 @@ class TestCLIRunner:
         env = _make_envelope()
         registry.append(env)
         two_hours_ago = str(datetime.now(UTC) - timedelta(hours=2))
-        registry._conn.execute(
-            "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
-            (two_hours_ago, env.id),
-        )
-        registry._conn.commit()
+        with registry._lock:
+            registry._conn.execute(
+                "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
+                (two_hours_ago, env.id),
+            )
+            registry._conn.commit()
 
         # Static prices
         prices = StaticPriceProvider(price_map={"BTC/USDT": 50000.0})
@@ -174,11 +180,12 @@ class TestCLIRunner:
         env = _make_envelope()
         registry.append(env)
         two_hours_ago = str(datetime.now(UTC) - timedelta(hours=2))
-        registry._conn.execute(
-            "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
-            (two_hours_ago, env.id),
-        )
-        registry._conn.commit()
+        with registry._lock:
+            registry._conn.execute(
+                "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
+                (two_hours_ago, env.id),
+            )
+            registry._conn.commit()
 
         prices = StaticPriceProvider(price_map={"BTC/USDT": 50000.0})
 
@@ -204,11 +211,12 @@ class TestCLIRunner:
         env = _make_envelope()
         registry.append(env)
         two_hours_ago = str(datetime.now(UTC) - timedelta(hours=2))
-        registry._conn.execute(
-            "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
-            (two_hours_ago, env.id),
-        )
-        registry._conn.commit()
+        with registry._lock:
+            registry._conn.execute(
+                "UPDATE canonical_signals SET created_at = ? WHERE id = ?",
+                (two_hours_ago, env.id),
+            )
+            registry._conn.commit()
 
         prices = StaticPriceProvider(price_map={"BTC/USDT": 50000.0})
 
