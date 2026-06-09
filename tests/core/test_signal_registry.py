@@ -213,3 +213,55 @@ class TestActiveSignals:
             registry.append(env)
             registry.transition(env.id, SignalLifecycle.EXPIRED)
         assert registry.query_active() == []
+
+
+# ======================================================================
+# Cleanup and vacuum
+# ======================================================================
+
+class TestCleanupExpired:
+    def test_cleanup_expired_deletes_old(self, registry):
+        """Insert a signal with a past created_at, then clean it up."""
+        from datetime import UTC, datetime, timedelta
+
+        env = _make_envelope()
+        # Manually insert with an old created_at
+        old_time = datetime.now(UTC) - timedelta(hours=48)
+        import json
+        payload = env.model_dump(mode="json")
+        payload["signal_class"] = payload.pop("class", payload.get("signal_class"))
+        envelope_json = json.dumps(payload, default=str)
+        with registry._lock:
+            registry._conn.execute(
+                "INSERT INTO canonical_signals "
+                "(id, envelope_json, lifecycle, created_at, asset, signal_class, updated_at) "
+                "VALUES (?, ?, 'emitted', ?, ?, ?, ?)",
+                (env.id, envelope_json, str(old_time), env.asset, env.signal_class.value, str(old_time)),
+            )
+            registry._conn.commit()
+        deleted = registry.cleanup_expired(max_age_hours=24)
+        assert deleted == 1
+        assert registry.get_signal(env.id) is None
+
+    def test_cleanup_expired_keeps_recent(self, registry):
+        """Signals newer than the cutoff are NOT deleted."""
+        env = _make_envelope()
+        registry.append(env)
+        deleted = registry.cleanup_expired(max_age_hours=24)
+        assert deleted == 0
+        assert registry.get_signal(env.id) is not None
+
+    def test_cleanup_expired_empty_db(self, registry):
+        """Cleanup on an empty DB returns 0."""
+        deleted = registry.cleanup_expired(max_age_hours=24)
+        assert deleted == 0
+
+
+class TestVacuum:
+    def test_vacuum_does_not_crash(self, registry):
+        """VACUUM should run without error on a populated DB."""
+        for i in range(5):
+            registry.append(_make_envelope(asset=f"COIN{i}/USDT"))
+        registry.vacuum()  # should not raise
+        # Data should still be there
+        assert len(registry.query_latest(limit=10)) == 5

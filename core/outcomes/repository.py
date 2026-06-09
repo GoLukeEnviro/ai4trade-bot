@@ -242,6 +242,21 @@ class OutcomeRepository:
             d["extra"] = {}
         return SignalOutcome(**d)
 
+    def cleanup_old(self, max_age_days: int = 30) -> int:
+        """Delete outcome records older than max_age_days. Returns count deleted."""
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM signal_outcomes WHERE evaluated_at < datetime('now', ?)",
+                (f"-{max_age_days} days",),
+            )
+            self._conn.commit()
+            return cur.rowcount
+
+    def vacuum(self) -> None:
+        """Run VACUUM on the SQLite database to reclaim space."""
+        with self._lock:
+            self._conn.execute("VACUUM")
+
     def close(self) -> None:
         with self._lock:
             self._conn.close()

@@ -158,3 +158,37 @@ class TestOutcomeRepositoryExtra:
     def test_close(self, repo):
         repo.close()
         # Should not raise
+
+
+class TestCleanupOld:
+    def test_cleanup_old_deletes_old(self, repo):
+        """Insert an outcome with an old evaluated_at, then clean it up."""
+        from datetime import UTC, datetime, timedelta
+
+        old_evaluated = datetime.now(UTC) - timedelta(days=60)
+        o = _make_outcome(evaluated_at=old_evaluated)
+        repo.insert(o)
+        deleted = repo.cleanup_old(max_age_days=30)
+        assert deleted == 1
+        assert repo.get_by_signal_id("sig-001") is None
+
+    def test_cleanup_old_keeps_recent(self, repo):
+        """Outcomes newer than the cutoff are NOT deleted."""
+        o = _make_outcome()
+        repo.insert(o)
+        deleted = repo.cleanup_old(max_age_days=30)
+        assert deleted == 0
+        assert repo.get_by_signal_id("sig-001") is not None
+
+    def test_cleanup_old_empty_db(self, repo):
+        """Cleanup on an empty DB returns 0."""
+        deleted = repo.cleanup_old(max_age_days=30)
+        assert deleted == 0
+
+
+class TestOutcomeVacuum:
+    def test_vacuum_does_not_crash(self, repo):
+        """VACUUM should run without error on a populated DB."""
+        repo.insert(_make_outcome(signal_id="s1"))
+        repo.vacuum()  # should not raise
+        assert repo.count() == 1
