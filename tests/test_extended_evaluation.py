@@ -52,7 +52,7 @@ class TestExistingFields:
         with pytest.raises(ValidationError):
             AIEvaluation(
                 ai_confidence=0.5,
-                risk_level="extreme",
+                risk_level="invalid_level",
                 market_regime="quiet",
                 reasoning="test",
                 model_used="m",
