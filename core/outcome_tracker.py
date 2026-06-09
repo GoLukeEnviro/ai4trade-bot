@@ -4,6 +4,8 @@ Usage:
     python -m core.outcome_tracker --once
     python -m core.outcome_tracker --once --dry-run
     python -m core.outcome_tracker --once --window-seconds 7200 --min-move-pct 0.3
+    python -m core.outcome_tracker --daemon --interval 300
+    python -m core.outcome_tracker --daemon --interval 60 --dry-run
 
 This is an observational tool. It never triggers trades or strategy changes.
 """
@@ -12,15 +14,20 @@ from __future__ import annotations
 
 import argparse
 import logging
+import signal
 import sys
+import time
 from typing import Any
 
+from core.heartbeat_writer import HeartbeatWriter
 from core.outcomes.evaluator import OutcomeEvaluator
 from core.outcomes.price_provider import PriceProvider, StaticPriceProvider
 from core.outcomes.repository import OutcomeRepository
 from core.signals.registry import CanonicalSignalRegistry
 
 log = logging.getLogger(__name__)
+
+_HEARTBEAT_PATH = "storage/outcome_tracker.heartbeat"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,6 +40,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=True,
         help="Run one evaluation pass and exit (default).",
+    )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+        default=False,
+        help="Loop forever, running evaluation every --interval seconds.",
+    )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=300,
+        help="Seconds between evaluation runs in daemon mode (default: 300).",
     )
     parser.add_argument(
         "--db-path",
@@ -129,6 +148,73 @@ def run(
     return stats
 
 
+def run_daemon(
+    *,
+    interval: int = 300,
+    db_path: str = "storage/outcomes.db",
+    signal_db_path: str = "storage/canonical_signals.db",
+    window_seconds: int = 3600,
+    min_move_pct: float = 0.5,
+    limit: int = 100,
+    dry_run: bool = False,
+    heartbeat_path: str = _HEARTBEAT_PATH,
+    max_cycles: int = 0,
+    _time_module: Any = None,
+) -> None:
+    """Run outcome evaluation in a loop with heartbeat.
+
+    Args:
+        interval: Seconds between evaluation runs.
+        max_cycles: Maximum number of cycles before exiting (0 = run forever).
+        _time_module: Injectable time module for testing (defaults to ``time``).
+    """
+    tm = _time_module or time
+    shutdown = False
+
+    def _handle_signal(signum: int, frame: Any) -> None:
+        nonlocal shutdown
+        log.info("Received signal %d, shutting down gracefully", signum)
+        shutdown = True
+
+    original_sigterm = signal.getsignal(signal.SIGTERM)
+    original_sigint = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
+    hb = HeartbeatWriter(path=heartbeat_path, component="outcome_tracker")
+
+    cycle = 0
+    try:
+        while not shutdown:
+            cycle += 1
+            log.info("Daemon cycle starting (cycle=%d)", cycle)
+            result = run(
+                db_path=db_path,
+                signal_db_path=signal_db_path,
+                window_seconds=window_seconds,
+                min_move_pct=min_move_pct,
+                limit=limit,
+                dry_run=dry_run,
+            )
+            hb.write(
+                status="healthy",
+                evaluated=result.get("evaluated", 0),
+                errors=result.get("errors", 0),
+            )
+            log.info("Daemon cycle %d complete, sleeping %ds", cycle, interval)
+            if max_cycles and cycle >= max_cycles:
+                log.info("Reached max_cycles=%d, exiting daemon", max_cycles)
+                break
+            if shutdown:
+                break
+            tm.sleep(interval)
+    except KeyboardInterrupt:
+        log.info("KeyboardInterrupt received, shutting down gracefully")
+    finally:
+        signal.signal(signal.SIGTERM, original_sigterm)
+        signal.signal(signal.SIGINT, original_sigint)
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -138,21 +224,31 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    log.info("Outcome Tracker starting (dry_run=%s)", args.dry_run)
+    if args.daemon:
+        log.info("Outcome Tracker starting in daemon mode (interval=%ds, dry_run=%s)", args.interval, args.dry_run)
+        run_daemon(
+            interval=args.interval,
+            db_path=args.db_path,
+            signal_db_path=args.signal_db_path,
+            window_seconds=args.window_seconds,
+            min_move_pct=args.min_move_pct,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+    else:
+        log.info("Outcome Tracker starting (dry_run=%s)", args.dry_run)
+        result = run(
+            db_path=args.db_path,
+            signal_db_path=args.signal_db_path,
+            window_seconds=args.window_seconds,
+            min_move_pct=args.min_move_pct,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+        print(f"Outcome evaluation complete: {result}")
 
-    result = run(
-        db_path=args.db_path,
-        signal_db_path=args.signal_db_path,
-        window_seconds=args.window_seconds,
-        min_move_pct=args.min_move_pct,
-        limit=args.limit,
-        dry_run=args.dry_run,
-    )
-
-    print(f"Outcome evaluation complete: {result}")
-
-    if result["errors"] > 0:
-        sys.exit(1)
+        if result["errors"] > 0:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
