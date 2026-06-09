@@ -64,6 +64,18 @@ class RainbowEngine:
         self.canonical_registry = CanonicalSignalRegistry()
         api_module._canonical_registry = self.canonical_registry
 
+        # Wire ingest router now that registry is available (Issue #36)
+        from core.signals.risk_gate import RiskGate
+        from rainbow.ingest.ingest import RainbowIngestor
+        from rainbow.ingest.router import init_ingest_router
+
+        init_ingest_router(
+            RainbowIngestor(
+                registry=self.canonical_registry,
+                risk_gate=RiskGate(),
+            )
+        )
+
         ACTIVE_COLLECTORS.set(len(self.collectors))
 
     def _init_evaluator(self) -> None:
