@@ -41,3 +41,8 @@ class CryptoSignal(BaseModel):
     metadata: dict = Field(default_factory=dict)
     rainbow_score: float | None = Field(default=None, ge=0.0, le=1.0)
     ai_evaluation: AIEvaluation | None = None
+    # Optional fields for enhanced evaluator context (Issue #34)
+    timeframe: str | None = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
+    leverage: float | None = None

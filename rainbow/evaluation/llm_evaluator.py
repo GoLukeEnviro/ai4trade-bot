@@ -22,7 +22,25 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are a crypto trading signal evaluator. Analyze signals objectively.\n"
-    "Always respond with valid JSON only. No markdown, no explanation outside JSON."
+    "Always respond with valid JSON only. No markdown, no explanation outside JSON.\n"
+    "\n"
+    "CAPITAL PRESERVATION DIRECTIVE:\n"
+    "Capital preservation is your primary directive. When in doubt, prioritize\n"
+    "protecting capital over pursuing gains.\n"
+    "\n"
+    "ANTI-HALLUCINATION DIRECTIVES:\n"
+    "- Never fabricate data, prices, indicators, or market conditions.\n"
+    "- If data is incomplete or ambiguous, flag it explicitly — do not guess.\n"
+    "- Only reference data explicitly provided in the signal.\n"
+    "\n"
+    "LEVERAGE AND POSITION-SIZING CAUTION:\n"
+    "- Default to no leverage recommendation (suggested_leverage = null).\n"
+    "- Conservative position sizing only (suggest small percentages).\n"
+    "\n"
+    "ADVISORY-ONLY RULES:\n"
+    "- Do not recommend direct order execution.\n"
+    "- Your output is advisory only — it will never be used as execution authority.\n"
+    "- When uncertain, prefer HOLD or lower confidence.\n"
 )
 
 USER_PROMPT_TEMPLATE = (
@@ -38,7 +56,7 @@ USER_PROMPT_TEMPLATE = (
     'Respond ONLY with this JSON structure:\n'
     "{{\n"
     '  "ai_confidence": <float 0.0-1.0>,\n'
-    '  "risk_level": "<low|medium|high>",\n'
+    '  "risk_level": "<low|medium|high|extreme>",\n'
     '  "market_regime": "<trending|ranging|volatile|quiet>",\n'
     '  "reasoning": "<max 2 sentences, factual>",\n'
     '  "ai_risk_score": <float 0.0-1.0>,\n'
@@ -46,7 +64,15 @@ USER_PROMPT_TEMPLATE = (
     '  "recommended_handling": "<store_only|summary|risk_summary|review_required|suppress>",\n'
     '  "contradictions": [<strings>],\n'
     '  "missing_context": [<strings>],\n'
-    '  "summary": "<one-line compact summary>"\n'
+    '  "summary": "<one-line compact summary>",\n'
+    '  "recommended_action": "<hold|reduce_exposure|wait_for_confirmation>" or null,\n'
+    '  "suggested_position_size_pct": <float 0-100 or null>,\n'
+    '  "suggested_leverage": <float or null>,\n'
+    '  "warnings": [<strings>],\n'
+    '  "key_takeaways": [<strings>],\n'
+    '  "data_completeness_score": <float 0.0-1.0 or null>,\n'
+    '  "confidence_drivers": [<strings>],\n'
+    '  "risk_drivers": [<strings>]\n'
     "}}"
 )
 
@@ -122,6 +148,45 @@ def _parse_llm_json(raw_content: str) -> dict | None:
     return None
 
 
+def _extract_optional_str(parsed: dict, key: str) -> str | None:
+    """Safely extract an optional string from parsed LLM JSON."""
+    try:
+        value = parsed.get(key)
+        if value is None:
+            return None
+        return str(value)
+    except Exception:
+        logger.warning("Malformed %s field in LLM response, defaulting to None", key)
+        return None
+
+
+def _extract_optional_float(parsed: dict, key: str) -> float | None:
+    """Safely extract an optional float from parsed LLM JSON."""
+    try:
+        value = parsed.get(key)
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        logger.warning("Malformed %s field in LLM response, defaulting to None", key)
+        return None
+
+
+def _extract_optional_list(parsed: dict, key: str) -> list[str]:
+    """Safely extract an optional list of strings from parsed LLM JSON."""
+    try:
+        value = parsed.get(key)
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        logger.warning("Expected list for %s, got %s; defaulting to []", key, type(value).__name__)
+        return []
+    except Exception:
+        logger.warning("Malformed %s field in LLM response, defaulting to []", key)
+        return []
+
+
 class LLMEvaluator(BaseEvaluator):
     def __init__(
         self,
@@ -161,7 +226,12 @@ class LLMEvaluator(BaseEvaluator):
     def _build_evaluation(
         self, parsed: dict, model_used: str, latency_ms: int,
     ) -> AIEvaluation:
-        """Construct an AIEvaluation from the parsed LLM dict."""
+        """Construct an AIEvaluation from the parsed LLM dict.
+
+        All new institutional-grade fields use safe extraction helpers
+        so that missing or malformed data degrades gracefully rather
+        than crashing the runtime.
+        """
         return AIEvaluation(
             ai_confidence=float(parsed.get("ai_confidence", 0.0)),
             risk_level=parsed.get("risk_level", "medium"),
@@ -175,6 +245,15 @@ class LLMEvaluator(BaseEvaluator):
             contradictions=parsed.get("contradictions", []),
             missing_context=parsed.get("missing_context", []),
             summary=str(parsed.get("summary", "")),
+            # Institutional-grade fields (Issue #34)
+            recommended_action=_extract_optional_str(parsed, "recommended_action"),
+            suggested_position_size_pct=_extract_optional_float(parsed, "suggested_position_size_pct"),
+            suggested_leverage=_extract_optional_float(parsed, "suggested_leverage"),
+            warnings=_extract_optional_list(parsed, "warnings"),
+            key_takeaways=_extract_optional_list(parsed, "key_takeaways"),
+            data_completeness_score=_extract_optional_float(parsed, "data_completeness_score"),
+            confidence_drivers=_extract_optional_list(parsed, "confidence_drivers"),
+            risk_drivers=_extract_optional_list(parsed, "risk_drivers"),
         )
 
     async def evaluate(self, signal: CryptoSignal) -> AIEvaluation | None:
