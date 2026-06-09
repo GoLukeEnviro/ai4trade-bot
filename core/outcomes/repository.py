@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -55,15 +56,17 @@ class OutcomeRepository:
 
     def __init__(self, db_path: str = "storage/outcomes.db") -> None:
         self._db_path = db_path
+        self._lock = threading.Lock()
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute(_CREATE_TABLE_SQL)
-        for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
-            idx_sql = idx_sql.strip()
-            if idx_sql:
-                self._conn.execute(idx_sql)
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute(_CREATE_TABLE_SQL)
+            for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
+                idx_sql = idx_sql.strip()
+                if idx_sql:
+                    self._conn.execute(idx_sql)
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Write operations
@@ -71,85 +74,88 @@ class OutcomeRepository:
 
     def insert(self, outcome: SignalOutcome) -> None:
         """Insert a new outcome. Raises on duplicate signal_id."""
-        self._conn.execute(
-            """INSERT INTO signal_outcomes
-               (signal_id, asset, direction, signal_class, source, emitted_at,
-                evaluated_at, evaluation_window_seconds, entry_price, outcome_price,
-                price_change_pct, expected_direction, outcome_label, outcome_score,
-                reason, confidence_at_signal, extra_json, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                outcome.signal_id,
-                outcome.asset,
-                outcome.direction,
-                outcome.signal_class,
-                outcome.source,
-                _dt_to_str(outcome.emitted_at),
-                _dt_to_str(outcome.evaluated_at),
-                outcome.evaluation_window_seconds,
-                outcome.entry_price,
-                outcome.outcome_price,
-                outcome.price_change_pct,
-                outcome.expected_direction,
-                outcome.outcome_label.value,
-                outcome.outcome_score,
-                outcome.reason,
-                outcome.confidence_at_signal,
-                json.dumps(outcome.extra, default=str),
-                _utcnow_str(),
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO signal_outcomes
+                   (signal_id, asset, direction, signal_class, source, emitted_at,
+                    evaluated_at, evaluation_window_seconds, entry_price, outcome_price,
+                    price_change_pct, expected_direction, outcome_label, outcome_score,
+                    reason, confidence_at_signal, extra_json, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    outcome.signal_id,
+                    outcome.asset,
+                    outcome.direction,
+                    outcome.signal_class,
+                    outcome.source,
+                    _dt_to_str(outcome.emitted_at),
+                    _dt_to_str(outcome.evaluated_at),
+                    outcome.evaluation_window_seconds,
+                    outcome.entry_price,
+                    outcome.outcome_price,
+                    outcome.price_change_pct,
+                    outcome.expected_direction,
+                    outcome.outcome_label.value,
+                    outcome.outcome_score,
+                    outcome.reason,
+                    outcome.confidence_at_signal,
+                    json.dumps(outcome.extra, default=str),
+                    _utcnow_str(),
+                ),
+            )
+            self._conn.commit()
 
     def upsert(self, outcome: SignalOutcome) -> None:
         """Insert or update an outcome (idempotent)."""
-        self._conn.execute(
-            """INSERT INTO signal_outcomes
-               (signal_id, asset, direction, signal_class, source, emitted_at,
-                evaluated_at, evaluation_window_seconds, entry_price, outcome_price,
-                price_change_pct, expected_direction, outcome_label, outcome_score,
-                reason, confidence_at_signal, extra_json, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(signal_id) DO UPDATE SET
-                evaluated_at=excluded.evaluated_at,
-                evaluation_window_seconds=excluded.evaluation_window_seconds,
-                entry_price=excluded.entry_price,
-                outcome_price=excluded.outcome_price,
-                price_change_pct=excluded.price_change_pct,
-                outcome_label=excluded.outcome_label,
-                outcome_score=excluded.outcome_score,
-                reason=excluded.reason,
-                extra_json=excluded.extra_json,
-                updated_at=excluded.updated_at""",
-            (
-                outcome.signal_id,
-                outcome.asset,
-                outcome.direction,
-                outcome.signal_class,
-                outcome.source,
-                _dt_to_str(outcome.emitted_at),
-                _dt_to_str(outcome.evaluated_at),
-                outcome.evaluation_window_seconds,
-                outcome.entry_price,
-                outcome.outcome_price,
-                outcome.price_change_pct,
-                outcome.expected_direction,
-                outcome.outcome_label.value,
-                outcome.outcome_score,
-                outcome.reason,
-                outcome.confidence_at_signal,
-                json.dumps(outcome.extra, default=str),
-                _utcnow_str(),
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO signal_outcomes
+                   (signal_id, asset, direction, signal_class, source, emitted_at,
+                    evaluated_at, evaluation_window_seconds, entry_price, outcome_price,
+                    price_change_pct, expected_direction, outcome_label, outcome_score,
+                    reason, confidence_at_signal, extra_json, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(signal_id) DO UPDATE SET
+                    evaluated_at=excluded.evaluated_at,
+                    evaluation_window_seconds=excluded.evaluation_window_seconds,
+                    entry_price=excluded.entry_price,
+                    outcome_price=excluded.outcome_price,
+                    price_change_pct=excluded.price_change_pct,
+                    outcome_label=excluded.outcome_label,
+                    outcome_score=excluded.outcome_score,
+                    reason=excluded.reason,
+                    extra_json=excluded.extra_json,
+                    updated_at=excluded.updated_at""",
+                (
+                    outcome.signal_id,
+                    outcome.asset,
+                    outcome.direction,
+                    outcome.signal_class,
+                    outcome.source,
+                    _dt_to_str(outcome.emitted_at),
+                    _dt_to_str(outcome.evaluated_at),
+                    outcome.evaluation_window_seconds,
+                    outcome.entry_price,
+                    outcome.outcome_price,
+                    outcome.price_change_pct,
+                    outcome.expected_direction,
+                    outcome.outcome_label.value,
+                    outcome.outcome_score,
+                    outcome.reason,
+                    outcome.confidence_at_signal,
+                    json.dumps(outcome.extra, default=str),
+                    _utcnow_str(),
+                ),
+            )
+            self._conn.commit()
 
     def has_outcome(self, signal_id: str) -> bool:
         """Check if an outcome already exists for this signal."""
-        row = self._conn.execute(
-            "SELECT 1 FROM signal_outcomes WHERE signal_id = ?",
-            (signal_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM signal_outcomes WHERE signal_id = ?",
+                (signal_id,),
+            ).fetchone()
         return row is not None
 
     # ------------------------------------------------------------------
@@ -158,10 +164,11 @@ class OutcomeRepository:
 
     def get_by_signal_id(self, signal_id: str) -> SignalOutcome | None:
         """Retrieve an outcome by signal_id, or None."""
-        row = self._conn.execute(
-            "SELECT * FROM signal_outcomes WHERE signal_id = ?",
-            (signal_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM signal_outcomes WHERE signal_id = ?",
+                (signal_id,),
+            ).fetchone()
         if row is None:
             return None
         return self._row_to_outcome(row)
@@ -183,29 +190,32 @@ class OutcomeRepository:
             clauses.append("outcome_label = ?")
             params.append(outcome_label.value)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        rows = self._conn.execute(
-            f"SELECT * FROM signal_outcomes {where} ORDER BY emitted_at DESC LIMIT ? OFFSET ?",
-            (*params, limit, offset),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT * FROM signal_outcomes {where} ORDER BY emitted_at DESC LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            ).fetchall()
         return [self._row_to_outcome(r) for r in rows]
 
     def count(self, outcome_label: OutcomeLabel | None = None) -> int:
         """Count outcomes, optionally filtered by label."""
-        if outcome_label is not None:
-            row = self._conn.execute(
-                "SELECT COUNT(*) FROM signal_outcomes WHERE outcome_label = ?",
-                (outcome_label.value,),
-            ).fetchone()
-        else:
-            row = self._conn.execute("SELECT COUNT(*) FROM signal_outcomes").fetchone()
+        with self._lock:
+            if outcome_label is not None:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) FROM signal_outcomes WHERE outcome_label = ?",
+                    (outcome_label.value,),
+                ).fetchone()
+            else:
+                row = self._conn.execute("SELECT COUNT(*) FROM signal_outcomes").fetchone()
         return row[0] if row else 0
 
     def export_all(self) -> list[dict[str, Any]]:
         """Export all outcomes as plain dicts (training-ready)."""
-        rows = self._conn.execute(
-            "SELECT * FROM signal_outcomes ORDER BY emitted_at"
-        ).fetchall()
-        cols = [d[0] for d in self._conn.execute("SELECT * FROM signal_outcomes LIMIT 0").description]
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM signal_outcomes ORDER BY emitted_at"
+            ).fetchall()
+            cols = [d[0] for d in self._conn.execute("SELECT * FROM signal_outcomes LIMIT 0").description]
         return [dict(zip(cols, r)) for r in rows]
 
     # ------------------------------------------------------------------
@@ -233,7 +243,8 @@ class OutcomeRepository:
         return SignalOutcome(**d)
 
     def close(self) -> None:
-        self._conn.close()
+        with self._lock:
+            self._conn.close()
 
 
 def _utcnow_str() -> str:

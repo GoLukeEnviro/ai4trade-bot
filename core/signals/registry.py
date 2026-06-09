@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -53,15 +54,17 @@ class CanonicalSignalRegistry:
 
     def __init__(self, db_path: str = "storage/canonical_signals.db") -> None:
         self._db_path = db_path
+        self._lock = threading.Lock()
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute(_CREATE_TABLE_SQL)
-        for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
-            idx_sql = idx_sql.strip()
-            if idx_sql:
-                self._conn.execute(idx_sql)
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute(_CREATE_TABLE_SQL)
+            for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
+                idx_sql = idx_sql.strip()
+                if idx_sql:
+                    self._conn.execute(idx_sql)
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Public API
@@ -73,12 +76,14 @@ class CanonicalSignalRegistry:
         payload["signal_class"] = payload.pop("class", payload.get("signal_class"))
         envelope_json = json.dumps(payload, default=str)
         now = payload.get("created_at", "")
-        self._conn.execute(
-            "INSERT INTO canonical_signals (id, envelope_json, lifecycle, created_at, asset, signal_class, updated_at) "
-            "VALUES (?, ?, 'emitted', ?, ?, ?, ?)",
-            (envelope.id, envelope_json, str(now), envelope.asset, envelope.signal_class.value, str(now)),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO canonical_signals "
+                "(id, envelope_json, lifecycle, created_at, asset, signal_class, updated_at) "
+                "VALUES (?, ?, 'emitted', ?, ?, ?, ?)",
+                (envelope.id, envelope_json, str(now), envelope.asset, envelope.signal_class.value, str(now)),
+            )
+            self._conn.commit()
         return envelope.id
 
     def transition(
@@ -94,12 +99,13 @@ class CanonicalSignalRegistry:
         from datetime import UTC, datetime
 
         now = str(datetime.now(UTC))
-        cur = self._conn.execute(
-            "UPDATE canonical_signals SET lifecycle = ?, reason = ?, updated_at = ? WHERE id = ?",
-            (lifecycle.value, reason, now, signal_id),
-        )
-        self._conn.commit()
-        return cur.rowcount > 0
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE canonical_signals SET lifecycle = ?, reason = ?, updated_at = ? WHERE id = ?",
+                (lifecycle.value, reason, now, signal_id),
+            )
+            self._conn.commit()
+            return cur.rowcount > 0
 
     def query_latest(
         self,
@@ -117,10 +123,11 @@ class CanonicalSignalRegistry:
             clauses.append("signal_class = ?")
             params.append(signal_class.value)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        rows = self._conn.execute(
-            f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY rowid DESC LIMIT ?",
-            (*params, limit),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY rowid DESC LIMIT ?",
+                (*params, limit),
+            ).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     def query_active(
@@ -134,18 +141,20 @@ class CanonicalSignalRegistry:
             clauses.append("asset = ?")
             params.append(asset)
         where = f"WHERE {' AND '.join(clauses)}"
-        rows = self._conn.execute(
-            f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY rowid DESC",
-            (*params,),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY rowid DESC",
+                (*params,),
+            ).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     def get_signal(self, signal_id: str) -> dict[str, Any] | None:
         """Retrieve a single signal by id, or None if not found."""
-        row = self._conn.execute(
-            "SELECT envelope_json, lifecycle, reason FROM canonical_signals WHERE id = ?",
-            (signal_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT envelope_json, lifecycle, reason FROM canonical_signals WHERE id = ?",
+                (signal_id,),
+            ).fetchone()
         if row is None:
             return None
         return self._row_to_dict(row)
@@ -172,10 +181,13 @@ class CanonicalSignalRegistry:
             clauses.append("signal_class = ?")
             params.append(signal_class.value)
         where = f"WHERE {' AND '.join(clauses)}"
-        rows = self._conn.execute(
-            f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY created_at ASC LIMIT ?",
-            (*params, limit),
-        ).fetchall()
+        with self._lock:
+            sql = (
+                f"SELECT envelope_json, lifecycle, reason "
+                f"FROM canonical_signals {where} "
+                f"ORDER BY created_at ASC LIMIT ?"
+            )
+            rows = self._conn.execute(sql, (*params, limit)).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     # ------------------------------------------------------------------
@@ -191,4 +203,5 @@ class CanonicalSignalRegistry:
         return data
 
     def close(self) -> None:
-        self._conn.close()
+        with self._lock:
+            self._conn.close()

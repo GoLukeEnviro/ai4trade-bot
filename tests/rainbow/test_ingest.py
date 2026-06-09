@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,12 +32,16 @@ from rainbow.ingest.router import init_ingest_router
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _now_iso() -> str:
+    """Return an ISO-8601 UTC timestamp for the current time."""
+    return datetime.now(UTC).isoformat()
+
 _VALID_REQUEST: dict = {
     "asset": "BTC/USDT",
     "direction": "bullish",
     "strength": 0.75,
     "source": "test_source",
-    "timestamp": "2026-06-09T12:00:00Z",
+    "timestamp": _now_iso(),
 }
 
 

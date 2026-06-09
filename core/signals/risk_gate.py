@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from core.signals.envelope import (
     CanonicalSignalEnvelope,
     SignalClass,
@@ -28,7 +30,10 @@ class RiskGate:
     min_confidence : float
         Minimum confidence (0-1) for a signal to pass.
     stale_threshold_seconds : int
-        Placeholder for future staleness guard (not yet wired).
+        Maximum age in seconds for a signal to be considered fresh.
+        Signals whose ``created_at`` is older than this threshold are
+        blocked as stale.  Signals with missing or unparseable timestamps
+        degrade safely to stale.
     """
 
     def __init__(
@@ -64,17 +69,23 @@ class RiskGate:
             mod = self._update_actionability(envelope, approved=False)
             return False, "data_quality_degraded", mod
 
-        # Rule 2 — risk too high
+        # Rule 2 — stale signal
+        staleness = self._compute_staleness_seconds(envelope)
+        if staleness is None or staleness > self.stale_threshold_seconds:
+            mod = self._update_actionability(envelope, approved=False)
+            return False, "stale_signal", mod
+
+        # Rule 3 — risk too high
         if envelope.risk_score >= 0.8:
             mod = self._update_actionability(envelope, approved=False)
             return False, "risk_too_high", mod
 
-        # Rule 3 — low confidence
+        # Rule 4 — low confidence
         if envelope.confidence < self.min_confidence:
             mod = self._update_actionability(envelope, approved=False)
             return False, "low_confidence", mod
 
-        # Rule 4 — ENTRY with no direction
+        # Rule 5 — ENTRY with no direction
         if envelope.signal_class == SignalClass.ENTRY and envelope.direction == "neutral":
             mod = self._update_actionability(envelope, approved=False)
             return False, "entry_no_direction", mod
@@ -86,6 +97,24 @@ class RiskGate:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _compute_staleness_seconds(envelope: CanonicalSignalEnvelope) -> float | None:
+        """Return seconds elapsed since *envelope.created_at*, or ``None``
+        if the timestamp is missing or unparseable (safe-degrades to stale).
+        """
+        try:
+            created = envelope.created_at
+            if created is None:
+                return None
+            # Ensure offset-aware comparison
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=UTC)
+            now = datetime.now(UTC)
+            delta = now - created
+            return delta.total_seconds()
+        except (TypeError, ValueError, AttributeError):
+            return None
 
     @staticmethod
     def _update_actionability(
