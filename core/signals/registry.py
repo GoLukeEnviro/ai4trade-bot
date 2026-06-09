@@ -150,6 +150,34 @@ class CanonicalSignalRegistry:
             return None
         return self._row_to_dict(row)
 
+    def query_open(
+        self,
+        min_age_seconds: int = 3600,
+        signal_class: SignalClass | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Return signals that are still 'emitted' and older than *min_age_seconds*.
+
+        Useful for the outcome tracker to find signals that are ready for evaluation.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=min_age_seconds)
+        clauses = [
+            "lifecycle = 'emitted'",
+            "created_at <= ?",
+        ]
+        params: list[Any] = [str(cutoff)]
+        if signal_class is not None:
+            clauses.append("signal_class = ?")
+            params.append(signal_class.value)
+        where = f"WHERE {' AND '.join(clauses)}"
+        rows = self._conn.execute(
+            f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY created_at ASC LIMIT ?",
+            (*params, limit),
+        ).fetchall()
+        return [self._row_to_dict(r) for r in rows]
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
