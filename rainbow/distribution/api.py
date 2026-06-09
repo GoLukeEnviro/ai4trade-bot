@@ -49,6 +49,21 @@ def create_app(store: Any, settings: Any, engine: Any = None, enable_metrics: bo
 
 
 def _register_routes(app: FastAPI) -> None:
+    # --- Ingest router (Issue #36) ---
+    from rainbow.ingest.router import init_ingest_router
+    from rainbow.ingest.router import router as ingest_router
+
+    app.include_router(ingest_router)
+    if _canonical_registry is not None:
+        from core.signals.risk_gate import RiskGate
+        from rainbow.ingest.ingest import RainbowIngestor
+
+        _ingestor = RainbowIngestor(
+            registry=_canonical_registry,
+            risk_gate=RiskGate(),
+        )
+        init_ingest_router(_ingestor)
+
     @app.get("/health")
     async def health() -> dict[str, Any]:
         uptime = time.monotonic() - _start_time
