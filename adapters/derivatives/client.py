@@ -51,11 +51,18 @@ class DryRunDerivativesFetcher(DerivativesDataFetcher):
     Returns static stub data when ENABLED is True and None otherwise.
     Feature flag ENABLED defaults to False — must be explicitly enabled.
 
+    The ``enabled`` constructor parameter overrides the class-level default,
+    allowing runtime configuration without changing the class attribute.
+
     This class makes NO network calls. All data is hardcoded stub values
     suitable for integration testing only.
     """
 
     ENABLED: bool = False
+
+    def __init__(self, enabled: bool | None = None) -> None:
+        if enabled is not None:
+            self.ENABLED = enabled
 
     # Stub constants
     _STUB_FUNDING_RATE: float = 0.01
