@@ -1,8 +1,8 @@
 # Rainbow Read-Only Signal Provider Contract
 
-> **Status:** Draft — Issue #51  
-> **System:** GoLukeEnviro/ai4trade-bot → GoLukeEnviro/trading-hub  
-> **Phase:** SI v2 Phase 0 foundation  
+> **Status:** Draft — Issue #51
+> **System:** GoLukeEnviro/ai4trade-bot → GoLukeEnviro/trading-hub
+> **Phase:** SI v2 Phase 0 foundation
 > **Last updated:** 2026-06-10
 
 ---
