@@ -341,6 +341,7 @@ def create_app() -> FastAPI:
 
     config_path = Path("rainbow/config.yaml")
     settings = RainbowSettings.from_yaml(config_path)
+    setup_logging(level=settings.log_level, fmt=settings.log_format)
     return create_engine(settings)
 
 
