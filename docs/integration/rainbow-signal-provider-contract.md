@@ -141,7 +141,7 @@ The `CryptoSignal` model (`rainbow/models/signal.py`) is used within the Rainbow
 | `confidence` | `float` [0.0, 1.0] | ✅ | Signal confidence |
 | `value` | `float \| None` | ❌ | Numeric value if applicable |
 | `raw_data` | `dict \| None` | ❌ | Raw input data (may require redaction) |
-| `metadata` | `dict` | ✅ | Arbitrary metadata (default `{}`) |
+| `metadata` | `dict` | ✅ | Arbitrary metadata; known assets include `canonical_symbol` in Trading-Hub format |
 | `rainbow_score` | `float \| None` | ❌ | Composite Rainbow score |
 | `ai_evaluation` | `AIEvaluation \| None` | ❌ | LLM evaluation result |
 | `timeframe` | `str \| None` | ❌ | Candle timeframe |
@@ -202,7 +202,7 @@ For trading-hub consumption via the read-only adapter layer (trading-hub #21, me
 | `source_id` | `CanonicalSignalEnvelope.source` or `CryptoSignal.source` | Direct |
 | `strategy_id` | `CryptoSignal.metadata.get("strategy", "rainbow_v1")` | Optional |
 | `model_id` | `CryptoSignal.metadata.get("model_id")` | Optional |
-| `symbol` | `CanonicalSignalEnvelope.asset` or `CryptoSignal.asset` | Direct |
+| `symbol` | `CanonicalSignalEnvelope.asset` or `CryptoSignal.metadata["canonical_symbol"]` | Direct; must use canonical `BASE/QUOTE:QUOTE` format |
 | `timeframe` | `CanonicalSignalEnvelope.timeframe` or `CryptoSignal.timeframe` | Direct |
 | `timestamp_utc` | `CanonicalSignalEnvelope.created_at` or `CryptoSignal.timestamp` | ISO-8601 |
 | `emitted_at_utc` | System timestamp at envelope creation | Optional |
@@ -211,6 +211,10 @@ For trading-hub consumption via the read-only adapter layer (trading-hub #21, me
 | `signal_strength` | `CryptoSignal.strength` | Optional |
 | `regime_hint` | `CryptoSignal.metadata.get("regime")` | Optional |
 | `metadata` | Combination of `features`, `reason_codes`, `raw_refs`, `data_quality` | Merged |
+
+For known Rainbow assets, `CryptoSignal.asset` remains the collector-friendly base asset (`BTC`, `ETH`, `SOL`) and
+`metadata.canonical_symbol` carries the cross-system symbol (`BTC/USDT:USDT`, `ETH/USDT:USDT`,
+`SOL/USDT:USDT`). Consumers must reject an unmapped asset rather than infer a trading pair.
 
 ### 5.1 Direction Mapping
 

@@ -143,20 +143,24 @@ def from_rainbow_signal(
         direction = dir_map.get(str(signal.direction.value), SignalDirection.NEUTRAL)
 
     sig_class = _rainbow_signal_type_to_class(signal.signal_type)
+    metadata = signal.metadata or {}
+    canonical_symbol = metadata.get("canonical_symbol")
+    asset = canonical_symbol if isinstance(canonical_symbol, str) and canonical_symbol else signal.asset
+    timeframe = metadata.get("timeframe")
 
     return CanonicalSignalEnvelope(
         signal_class=sig_class,
         subtype=signal.signal_type.value if signal.signal_type else "unknown",
         source=f"rainbow:{signal.source}",
-        asset=signal.asset,
-        timeframe=None,
+        asset=asset,
+        timeframe=timeframe if isinstance(timeframe, str) else None,
         created_at=signal.timestamp,
         direction=direction,
         confidence=signal.strength,
         risk_score=risk_score,
         priority=SignalPriority.MEDIUM,
         reason_codes=[],
-        features=signal.metadata or {},
+        features=metadata,
         data_quality=DataQuality(
             status=DataQualityStatus.OK,
             source_latency_ms=None,

@@ -27,7 +27,7 @@ class TestCryptoSignal:
         assert sig.direction is None
         assert sig.value is None
         assert sig.raw_data is None
-        assert sig.metadata == {}
+        assert sig.metadata == {"canonical_symbol": "BTC/USDT:USDT"}
         assert sig.rainbow_score is None
 
     def test_full_signal(self, sample_signal):

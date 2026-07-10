@@ -10,6 +10,7 @@ from ta.volatility import BollingerBands
 from rainbow.collectors.base import BaseCollector
 from rainbow.exceptions import CollectorError
 from rainbow.models.signal import CryptoSignal, Direction, SignalType
+from rainbow.symbols import canonical_symbol_for_asset
 
 log = logging.getLogger(__name__)
 
@@ -99,7 +100,11 @@ class TACollector(BaseCollector):
             confidence=round(strength / 100.0, 3),
             value=price,
             raw_data=self._raw_indicators(analysis),
-            metadata={"timeframe": timeframe, "pair": asset},
+            metadata={
+                "timeframe": timeframe,
+                "pair": asset,
+                "canonical_symbol": canonical_symbol_for_asset(asset),
+            },
             timestamp=timestamp,
         )
 

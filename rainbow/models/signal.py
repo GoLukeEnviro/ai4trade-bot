@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from rainbow.evaluation.models import AIEvaluation
 
@@ -46,3 +46,14 @@ class CryptoSignal(BaseModel):
     stop_loss: float | None = None
     take_profit: float | None = None
     leverage: float | None = None
+
+    @model_validator(mode="after")
+    def _attach_canonical_symbol(self) -> "CryptoSignal":
+        """Attach the canonical Trading-Hub symbol for configured assets."""
+        from rainbow.symbols import canonical_symbol_for_asset
+
+        try:
+            self.metadata.setdefault("canonical_symbol", canonical_symbol_for_asset(self.asset))
+        except ValueError:
+            pass
+        return self
