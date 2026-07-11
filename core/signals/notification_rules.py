@@ -78,8 +78,8 @@ class NotificationRuleChecker:
     def _check_cooldown(self, key: tuple[str, str], reason: str) -> tuple[bool, str]:
         """Return ``(True, reason)`` if cooldown has elapsed, else ``(False, …)``."""
         now = time.monotonic()
-        last = self._last_notification.get(key, 0.0)
-        if now - last < self._cooldown_seconds:
+        last = self._last_notification.get(key)
+        if last is not None and now - last < self._cooldown_seconds:
             return False, f"cooldown_active ({reason})"
         self._last_notification[key] = now
         return True, reason

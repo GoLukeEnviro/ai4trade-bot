@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import patch
 
 from core.signals.envelope import (
     CanonicalSignalEnvelope,
@@ -49,6 +50,15 @@ class TestNotificationRules:
     def test_rule1_critical_priority_notifies(self) -> None:
         env = _envelope(priority=SignalPriority.CRITICAL)
         ok, reason = self.checker.should_notify(env)
+        assert ok is True
+        assert reason == "critical_priority"
+
+    def test_first_notification_is_not_treated_as_a_cooldown(self) -> None:
+        env = _envelope(priority=SignalPriority.CRITICAL)
+
+        with patch("core.signals.notification_rules.time.monotonic", return_value=1.0):
+            ok, reason = self.checker.should_notify(env)
+
         assert ok is True
         assert reason == "critical_priority"
 
