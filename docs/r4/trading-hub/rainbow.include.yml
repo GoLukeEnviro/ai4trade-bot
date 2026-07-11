@@ -1,0 +1,50 @@
+# Rainbow Service – Include für trading-hub Compose
+#
+# Verwendung im trading-hub Repo:
+#   include:
+#     - path: ./path/to/ai4trade-bot/docs/r4/trading-hub/rainbow.include.yml
+#
+# Passe context und Volume-Pfade an deine Verzeichnisstruktur an.
+# Dieser Service darf KEINEN öffentlichen Port haben.
+
+services:
+  rainbow:
+    build:
+      # Beispiele:
+      # context: ./ai4trade-bot                 # wenn als Submodul
+      # context: ../ai4trade-bot                # wenn neben trading-hub
+      context: ${AI4TRADE_CONTEXT:-../ai4trade-bot}
+      dockerfile: rainbow.Dockerfile
+    # Explizit kein ports: Mapping!
+    volumes:
+      - rainbow_data:/app/rainbow/storage
+      - ${RAINBOW_CONFIG:-./config/rainbow.internal.yml}:/app/rainbow/config.yaml:ro
+    environment:
+      RAINBOW_LOG_LEVEL: ${RAINBOW_LOG_LEVEL:-INFO}
+      RAINBOW_LOG_FORMAT: ${RAINBOW_LOG_FORMAT:-json}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          python -c '
+          import json, sys, time, pathlib
+          p = pathlib.Path("/app/rainbow/storage/heartbeat_rainbow.json")
+          if not p.exists():
+              sys.exit(1)
+          data = json.loads(p.read_text())
+          age = time.time() - data.get("timestamp_unix", 0)
+          ok = data.get("status") in ("healthy", "running") and age < 120
+          sys.exit(0 if ok else 1)
+          '
+      interval: 30s
+      timeout: 10s
+      start_period: 25s
+      retries: 3
+    networks:
+      - ${TRADING_NETWORK:-trading_internal}
+
+volumes:
+  rainbow_data:
+
+# Das Netzwerk muss im Haupt-Compose definiert sein (oder hier mit default).

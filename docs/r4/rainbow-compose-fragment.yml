@@ -1,0 +1,62 @@
+# Rainbow Internal Service – Copy-Paste Fragment für HermesTrader Compose
+#
+# Verwendung:
+#   - Diesen Block in euer docker-compose.yml (oder compose.rainbow.yml) einfügen.
+#   - Passe die Pfade an (context, volumes).
+#   - Stelle sicher, dass das Netz "hermes_internal" existiert.
+#
+# WICHTIG:
+#   - Kein "ports:" für Rainbow!
+#   - Der Service ist nur intern über den Compose-Netzwerknamen erreichbar.
+#   - Config wird als einzelne Datei gemountet (löst das rainbow/config.yaml Problem).
+
+services:
+  rainbow:
+    build:
+      context: ./ai4trade-bot          # oder absoluter Pfad zum Repo
+      dockerfile: rainbow.Dockerfile
+    # Kein ports: Mapping! Nur internes Netz.
+    volumes:
+      # Empfohlene Lösung: Einzelne Config-Datei mounten
+      - ./config/rainbow.internal.yml:/app/rainbow/config.yaml:ro
+      # Persistenter Storage für DB + Heartbeat
+      - rainbow_data:/app/rainbow/storage
+    environment:
+      # Für reinen TA-Baseline-Betrieb (public APIs)
+      RAINBOW_LOG_LEVEL: "INFO"
+      RAINBOW_LOG_FORMAT: "json"
+      # Weitere RAINBOW_* Keys nur bei Bedarf setzen (z.B. für LLM Collector später)
+    restart: unless-stopped
+    healthcheck:
+      # Datei-basiert (robust, passt zum Dockerfile)
+      test:
+        - CMD-SHELL
+        - |
+          python -c '
+          import json, sys, time, pathlib
+          p = pathlib.Path("/app/rainbow/storage/heartbeat_rainbow.json")
+          if not p.exists():
+              sys.exit(1)
+          try:
+              data = json.loads(p.read_text())
+              age = time.time() - data.get("timestamp_unix", 0)
+              status_ok = data.get("status") in ("healthy", "running")
+              sys.exit(0 if (age < 120 and status_ok) else 1)
+          except Exception:
+              sys.exit(1)
+          '
+      interval: 30s
+      timeout: 10s
+      start_period: 25s
+      retries: 3
+    networks:
+      - hermes_internal
+
+volumes:
+  rainbow_data:
+
+# Beispiel-Netzwerk (falls noch nicht definiert)
+networks:
+  hermes_internal:
+    driver: bridge
+    internal: false   # false, damit Trading-Hub-Container dran kann
