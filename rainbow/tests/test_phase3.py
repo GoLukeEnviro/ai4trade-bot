@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import pytest_asyncio
 
 from rainbow.collectors.news_collector import NewsCollector
 from rainbow.distribution.webhooks import WebhookManager, WebhookSubscription
@@ -10,9 +11,11 @@ from rainbow.processor.scorer import RainbowScorer
 
 
 class TestNewsCollector:
-    @pytest.fixture
-    def collector(self):
-        return NewsCollector(assets=["BTC", "ETH"])
+    @pytest_asyncio.fixture
+    async def collector(self):
+        collector = NewsCollector(assets=["BTC", "ETH"])
+        yield collector
+        await collector.close()
 
     def test_name(self, collector):
         assert collector.name == "news"
@@ -92,9 +95,11 @@ class TestNewsCollector:
 
 
 class TestWebhookManager:
-    @pytest.fixture
-    def manager(self):
-        return WebhookManager()
+    @pytest_asyncio.fixture
+    async def manager(self):
+        manager = WebhookManager()
+        yield manager
+        await manager.close()
 
     def test_subscribe(self, manager):
         sub = WebhookSubscription(url="https://example.com/hook")
