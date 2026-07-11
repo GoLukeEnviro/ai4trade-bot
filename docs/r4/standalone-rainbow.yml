@@ -1,0 +1,59 @@
+# Standalone Rainbow Service (für lokales Testen / Entwicklung)
+#
+# Verwendung (vom ai4trade-bot Repo-Root):
+#   docker compose -f docs/r4/standalone-rainbow.yml up -d
+#
+# Zum Testen lokal mit Port (nur für Standalone!):
+#   docker compose -f docs/r4/standalone-rainbow.yml up -d
+#   curl http://localhost:18000/health
+#   curl http://localhost:18000/signals/canonical/latest
+#
+# WICHTIG:
+# - Dieser Compose ist nur für Standalone gedacht.
+# - Für die Integration in trading-hub siehe docs/r4/trading-hub-integration.md
+# - Kein Production-Exposure hier.
+
+services:
+  rainbow:
+    build:
+      context: .
+      dockerfile: rainbow.Dockerfile
+    # Für Standalone-Tests Port freigeben (intern 8000 → Host 18000)
+    # In trading-hub Integration darf dieser Port NICHT exposed werden!
+    ports:
+      - "18000:8000"
+    volumes:
+      # Persistenz für Signale + Heartbeat
+      - rainbow_data:/app/rainbow/storage
+      # Interne Config (TA-only, secret-frei)
+      - ./docs/r4/rainbow.internal.yml:/app/rainbow/config.yaml:ro
+    environment:
+      # Logging für bessere Lesbarkeit beim Testen
+      RAINBOW_LOG_LEVEL: INFO
+      RAINBOW_LOG_FORMAT: text
+    restart: unless-stopped
+    healthcheck:
+      # Nutzt die Heartbeat-Datei (wie im Dockerfile definiert)
+      test:
+        - CMD-SHELL
+        - |
+          python -c '
+          import json, sys, time, pathlib
+          p = pathlib.Path("/app/rainbow/storage/heartbeat_rainbow.json")
+          if not p.exists():
+              sys.exit(1)
+          try:
+              data = json.loads(p.read_text())
+              age = time.time() - data.get("timestamp_unix", 0)
+              status_ok = data.get("status") in ("healthy", "running")
+              sys.exit(0 if (age < 120 and status_ok) else 1)
+          except Exception:
+              sys.exit(1)
+          '
+      interval: 30s
+      timeout: 10s
+      start_period: 25s
+      retries: 3
+
+volumes:
+  rainbow_data:

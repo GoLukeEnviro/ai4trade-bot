@@ -1,0 +1,50 @@
+# Minimales Beispiel: Nur Rainbow Service (für HermesTrader)
+#
+# Verwendung:
+#   docker compose -f docs/r4/example-compose.rainbow-only.yml up -d
+#
+# In der realen HermesTrader-Umgebung:
+# - Context-Pfad anpassen
+# - Mit dem restlichen Trading-Hub Compose mergen (via includes oder manuell)
+# - Kein Port-Publish für rainbow!
+
+version: "3.8"
+
+services:
+  rainbow:
+    build:
+      context: ../..                    # Passt an, wenn docs/r4/ im Hermes-Repo liegt
+      dockerfile: rainbow.Dockerfile
+    volumes:
+      - ./rainbow-data:/app/rainbow/storage
+      - ./config/rainbow.internal.yml:/app/rainbow/config.yaml:ro
+    environment:
+      RAINBOW_LOG_LEVEL: INFO
+      RAINBOW_LOG_FORMAT: json
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          python -c '
+          import json, sys, time, pathlib
+          p = pathlib.Path("/app/rainbow/storage/heartbeat_rainbow.json")
+          if not p.exists(): sys.exit(1)
+          data = json.loads(p.read_text())
+          age = time.time() - data.get("timestamp_unix", 0)
+          ok = data.get("status") in ("healthy", "running") and age < 120
+          sys.exit(0 if ok else 1)
+          '
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    networks:
+      - internal
+
+volumes:
+  rainbow-data:
+
+networks:
+  internal:
+    driver: bridge

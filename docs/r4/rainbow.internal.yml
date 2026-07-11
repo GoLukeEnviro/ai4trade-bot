@@ -1,0 +1,62 @@
+# Rainbow Intelligence Engine — Interne HermesTrader Konfiguration (R4 Baseline)
+# 
+# Verwendung:
+#   1. Diese Datei als rainbow/config.yaml in den HermesTrader-Context kopieren
+#   2. Im Compose als Volume mounten:
+#      - ./path/to/this/file:/app/rainbow/config.yaml:ro
+#
+# Für R7-Messung optimiert:
+# - Nur TA Collector aktiv (public APIs, keine Secrets)
+# - Evaluation deaktiviert
+# - JSON Logging für bessere Maschinenlesbarkeit
+# - 60s TA-Intervall
+
+log_level: INFO
+log_format: json
+
+db_path: rainbow/storage/signals.db
+
+market_data:
+  bitget_base_url: https://api.bitget.com
+  coingecko_base_url: https://api.coingecko.com/api/v3
+  default_interval: 1h
+  default_candle_limit: 200
+
+api:
+  host: 0.0.0.0
+  port: 8000
+
+scorer:
+  weights:
+    technical: 0.4
+    sentiment: 0.3
+    social: 0.2
+    news: 0.1
+
+collectors:
+  ta:
+    enabled: true
+    interval_seconds: 60
+    assets:
+      - BTC
+      - ETH
+      - SOL
+    params:
+      timeframes:
+        - 1h
+        - 4h
+
+  # Weitere Collector für die erste Messphase bewusst deaktiviert.
+  # Aktivierung erst nach R7-Evidenz.
+  # twitter:
+  #   enabled: false
+  # reddit:
+  #   enabled: false
+  # news:
+  #   enabled: false
+
+evaluation:
+  enabled: false
+  # model: deepseek-reasoner
+  # timeout_seconds: 5.0
+  # threshold: 0.5
