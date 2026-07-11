@@ -34,27 +34,14 @@ services:
       RAINBOW_LOG_FORMAT: text
     restart: unless-stopped
     healthcheck:
-      # Nutzt die Heartbeat-Datei (wie im Dockerfile definiert)
+      # HTTP /health — zuverlässiger als Heartbeat-Datei-Pfad für Standalone-Tests
       test:
         - CMD-SHELL
-        - |
-          python -c '
-          import json, sys, time, pathlib
-          p = pathlib.Path("/app/storage/heartbeat_rainbow.json")
-          if not p.exists():
-              sys.exit(1)
-          try:
-              data = json.loads(p.read_text())
-              age = time.time() - data.get("timestamp_unix", 0)
-              status_ok = data.get("status") in ("healthy", "running")
-              sys.exit(0 if (age < 120 and status_ok) else 1)
-          except Exception:
-              sys.exit(1)
-          '
-      interval: 30s
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 15s
       timeout: 10s
-      start_period: 25s
-      retries: 3
+      start_period: 30s
+      retries: 5
 
   dashboard:
     image: nginx:alpine
