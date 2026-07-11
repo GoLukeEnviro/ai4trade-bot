@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from scripts.check_rainbow_metadata_completeness import FIXTURES_DIR, run
 
