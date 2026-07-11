@@ -130,8 +130,8 @@ Bevor du in trading-hub einbindest, teste Rainbow standalone:
 docker compose -f docs/r4/standalone-rainbow.yml up -d
 
 # Testen
-curl http://localhost:18000/health
-curl "http://localhost:18000/signals/canonical/latest?limit=5"
+curl http://localhost:18080/health
+curl "http://localhost:18080/signals/canonical/latest?limit=5"
 ```
 
 Sobald es stabil läuft, kannst du die Config und das Service-Fragment in trading-hub übernehmen.

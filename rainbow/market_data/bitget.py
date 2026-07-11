@@ -120,8 +120,17 @@ class BitgetClient(MarketDataProvider):
         raise ProviderError("bitget", f"Nach {max_retries} Versuchen gescheitert: {last_exc}")
 
 
+_QUOTE_SUFFIXES = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
+
+
 def _normalize_symbol(symbol: str) -> str:
-    return symbol.replace("/", "")
+    normalized = symbol.replace("/", "").upper()
+    if not any(
+        normalized.endswith(suffix) and len(normalized) > len(suffix)
+        for suffix in _QUOTE_SUFFIXES
+    ):
+        normalized += "USDT"
+    return normalized
 
 
 def _normalize_timestamp(value: object) -> float | None:

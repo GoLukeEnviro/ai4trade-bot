@@ -5,7 +5,7 @@
 ```bash
 RAINBOW_BASE_URL=http://rainbow:8000
 # Für Standalone-Tests lokal:
-# RAINBOW_BASE_URL=http://localhost:18000
+# RAINBOW_BASE_URL=http://localhost:18080
 ```
 
 ## Typische Aufrufe (Python-Beispiel)

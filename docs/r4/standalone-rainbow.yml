@@ -5,8 +5,9 @@
 #
 # Zum Testen lokal mit Port (nur für Standalone!):
 #   docker compose -f docs/r4/standalone-rainbow.yml up -d
-#   curl http://localhost:18000/health
-#   curl http://localhost:18000/signals/canonical/latest
+#   curl http://localhost:18080/health
+#   curl http://localhost:18080/signals/canonical/latest
+#   open http://localhost:18081
 #
 # WICHTIG:
 # - Dieser Compose ist nur für Standalone gedacht.
@@ -16,17 +17,17 @@
 services:
   rainbow:
     build:
-      context: .
+      context: ../..
       dockerfile: rainbow.Dockerfile
-    # Für Standalone-Tests Port freigeben (intern 8000 → Host 18000)
+    # Für Standalone-Tests Port freigeben (intern 8000 → Host 18080)
     # In trading-hub Integration darf dieser Port NICHT exposed werden!
     ports:
-      - "18000:8000"
+      - "18080:8000"
     volumes:
       # Persistenz für Signale + Heartbeat
       - rainbow_data:/app/rainbow/storage
-      # Interne Config (TA-only, secret-frei)
-      - ./docs/r4/rainbow.internal.yml:/app/rainbow/config.yaml:ro
+      # Interne Config (TA-only, secret-frei) -- relative to this compose file dir
+      - ./rainbow.internal.yml:/app/rainbow/config.yaml:ro
     environment:
       # Logging für bessere Lesbarkeit beim Testen
       RAINBOW_LOG_LEVEL: INFO
@@ -54,6 +55,18 @@ services:
       timeout: 10s
       start_period: 25s
       retries: 3
+
+  dashboard:
+    image: nginx:alpine
+    ports:
+      - "18081:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html:ro
+      - ./dashboard/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      rainbow:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   rainbow_data:
