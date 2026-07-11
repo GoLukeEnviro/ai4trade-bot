@@ -14,3 +14,13 @@ build/
 models/predictive/*.json
 models/predictive/*.txt
 *.db
+
+# Local session / tooling artifacts (not for commit)
+.omo/drafts/
+.omo/run-continuation/
+mcps/
+terminals/
+agent-tools/
+pytest_full.txt
+pytest_out.txt
+whats-next.md
