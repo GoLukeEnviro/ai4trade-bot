@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -45,7 +46,7 @@ class HeartbeatWriter:
         tmp_path = self._path.with_suffix(".tmp")
         try:
             tmp_path.write_text(json.dumps(data, indent=2) + "\n")
-            tmp_path.rename(self._path)
+            os.replace(tmp_path, self._path)
             self._write_count += 1
         except OSError as e:
             log.warning("Failed to write heartbeat to %s: %s", self._path, e)
