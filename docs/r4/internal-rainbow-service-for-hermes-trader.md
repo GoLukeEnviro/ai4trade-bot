@@ -45,7 +45,7 @@ Füge diesen Block in euer HermesTrader Compose (z.B. `docker-compose.yml` oder 
         - |
           python -c "
           import json, sys, time, pathlib
-          p = pathlib.Path('/app/rainbow/storage/heartbeat_rainbow.json')
+          p = pathlib.Path('/app/storage/heartbeat_rainbow.json')
           if not p.exists():
               sys.exit(1)
           data = json.loads(p.read_text())
@@ -141,7 +141,7 @@ Der Read-Only Client sollte dann `RAINBOW_INTERNAL_URL/signals/canonical/latest`
 
 ## Health & Observability
 
-- Heartbeat-Datei: `/app/rainbow/storage/heartbeat_rainbow.json` (im Volume)
+- Heartbeat-Datei: `/app/storage/heartbeat_rainbow.json` (Runtime, nicht im DB-Volume)
 - HTTP: `http://rainbow:8000/health`
 - Watchdog auf HermesTrader-Seite sollte beide Quellen prüfen können.
 

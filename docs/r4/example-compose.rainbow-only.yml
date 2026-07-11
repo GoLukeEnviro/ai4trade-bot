@@ -28,7 +28,7 @@ services:
         - |
           python -c '
           import json, sys, time, pathlib
-          p = pathlib.Path("/app/rainbow/storage/heartbeat_rainbow.json")
+          p = pathlib.Path("/app/storage/heartbeat_rainbow.json")
           if not p.exists(): sys.exit(1)
           data = json.loads(p.read_text())
           age = time.time() - data.get("timestamp_unix", 0)

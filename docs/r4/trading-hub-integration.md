@@ -62,7 +62,7 @@ services:
         - |
           python -c '
           import json, sys, time, pathlib
-          p = pathlib.Path("/app/rainbow/storage/heartbeat_rainbow.json")
+          p = pathlib.Path("/app/storage/heartbeat_rainbow.json")
           if not p.exists(): sys.exit(1)
           data = json.loads(p.read_text())
           age = time.time() - data.get("timestamp_unix", 0)
@@ -130,8 +130,8 @@ Bevor du in trading-hub einbindest, teste Rainbow standalone:
 docker compose -f docs/r4/standalone-rainbow.yml up -d
 
 # Testen
-curl http://localhost:18000/health
-curl "http://localhost:18000/signals/canonical/latest?limit=5"
+curl http://localhost:18080/health
+curl "http://localhost:18080/signals/canonical/latest?limit=5"
 ```
 
 Sobald es stabil läuft, kannst du die Config und das Service-Fragment in trading-hub übernehmen.

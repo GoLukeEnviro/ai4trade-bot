@@ -21,19 +21,36 @@ Du kannst Rainbow komplett ohne trading-hub starten:
 # Vom Root des ai4trade-bot Repos
 docker compose -f docs/r4/standalone-rainbow.yml up -d
 
-# Testen
-curl http://localhost:18000/health
-curl "http://localhost:18000/signals/canonical/latest?limit=10"
+# Rainbow API testen
+curl http://localhost:18080/health
+curl "http://localhost:18080/signals/canonical/latest?limit=10"
+
+# Dashboard (Browser)
+# http://localhost:18081
+
+# Automatisierter Smoke-Test (Linux/VPS)
+bash docs/r4/smoke-test.sh
 ```
 
 Datei: `standalone-rainbow.yml`
 
 - Baut direkt aus dem aktuellen Repo.
 - Nutzt `rainbow.internal.yml` als Config.
-- Gibt Port 18000 für lokale Tests frei (nur Standalone!).
+- Rainbow API: Port `18080` (nur Standalone!).
+- Test-Dashboard: Port `18081` (nginx + Vanilla JS).
 - Persistenz über Volume.
 
-**Hinweis:** Im Standalone-Modus ist der Port nur für dich zum Testen freigegeben. Im trading-hub Setup darf **kein** Port exposed werden.
+**Hinweis:** Im Standalone-Modus sind die Ports nur für Tests freigegeben. Im trading-hub Setup darf **kein** Port exposed werden.
+
+### Test auf HermesTrader VPS
+
+```bash
+ssh hermestrader-root
+mkdir -p /opt/rainbow-test && cd /opt/rainbow-test
+git clone --depth 1 https://github.com/GoLukeEnviro/ai4trade-bot.git .
+bash docs/r4/smoke-test.sh
+# Dashboard: http://100.96.132.39:18081 (Tailscale)
+```
 
 ## 2. Anbindung an trading-hub
 
@@ -53,7 +70,9 @@ Zusammengefasst:
 
 | Datei                              | Zweck |
 |------------------------------------|-------|
-| `standalone-rainbow.yml`           | Standalone Compose zum Testen |
+| `standalone-rainbow.yml`           | Standalone Compose (Rainbow + Dashboard) |
+| `dashboard/`                       | Minimales Test-Dashboard (nginx + HTML/JS) |
+| `smoke-test.sh`                    | Automatisierter Standalone-Smoke-Test |
 | `rainbow.internal.yml`             | Minimale Config (TA only) |
 | `trading-hub-integration.md`       | Vollständige Integrationsanleitung |
 | `trading-hub/rainbow.include.yml`  | Fertiges Include für trading-hub Compose |
