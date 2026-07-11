@@ -3,7 +3,7 @@ from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class CollectorConfig(BaseModel):
@@ -33,7 +33,7 @@ class ScorerConfig(BaseModel):
 
 
 class ApiConfig(BaseModel):
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
 
 
@@ -96,7 +96,7 @@ class RainbowSettings(BaseSettings):
 
     db_path: str = "rainbow/storage/signals.db"
 
-    model_config = {"env_prefix": "RAINBOW_"}
+    model_config = SettingsConfigDict(env_prefix="RAINBOW_", env_nested_delimiter="__")
 
     @classmethod
     def from_yaml(cls, path: Path) -> "RainbowSettings":

@@ -139,6 +139,13 @@ class TestRainbowSettings:
         with pytest.raises(ValidationError):
             ApiConfig(port=99999)
 
+    def test_api_host_defaults_to_localhost(self):
+        assert ApiConfig().host == "127.0.0.1"
+
+    def test_api_host_env_override(self, monkeypatch):
+        monkeypatch.setenv("RAINBOW_API__HOST", "10.0.0.1")
+        assert RainbowSettings().api.host == "10.0.0.1"
+
     def test_from_yaml_missing_file(self, tmp_path):
         s = RainbowSettings.from_yaml(tmp_path / "nonexistent.yml")
         assert s.log_level == "INFO"

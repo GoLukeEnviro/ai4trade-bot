@@ -38,7 +38,6 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,4 +45,4 @@ jobs:
           python-version: "3.12"
       - run: pip install pip-audit bandit
       - run: pip-audit -r requirements.txt
-      - run: bandit -r . -x ./tests -ll
+      - run: bandit -r . -x ./tests,./rainbow/tests,./.venv,./mcps -ll
