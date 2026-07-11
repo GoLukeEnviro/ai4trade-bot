@@ -114,20 +114,18 @@ class CanonicalSignalRegistry:
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """Return the most recent signals, optionally filtered."""
-        clauses: list[str] = []
+        query = "SELECT envelope_json, lifecycle, reason FROM canonical_signals WHERE 1=1"
         params: list[Any] = []
         if asset is not None:
-            clauses.append("asset = ?")
+            query += " AND asset = ?"
             params.append(asset)
         if signal_class is not None:
-            clauses.append("signal_class = ?")
+            query += " AND signal_class = ?"
             params.append(signal_class.value)
-        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        query += " ORDER BY rowid DESC LIMIT ?"
+        params.append(limit)
         with self._lock:
-            rows = self._conn.execute(
-                f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY rowid DESC LIMIT ?",
-                (*params, limit),
-            ).fetchall()
+            rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     def query_active(
@@ -135,17 +133,17 @@ class CanonicalSignalRegistry:
         asset: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return signals that have NOT been expired or invalidated."""
-        clauses = ["lifecycle NOT IN ('expired', 'invalidated')"]
+        query = (
+            "SELECT envelope_json, lifecycle, reason FROM canonical_signals"
+            " WHERE lifecycle NOT IN ('expired', 'invalidated')"
+        )
         params: list[Any] = []
         if asset is not None:
-            clauses.append("asset = ?")
+            query += " AND asset = ?"
             params.append(asset)
-        where = f"WHERE {' AND '.join(clauses)}"
+        query += " ORDER BY rowid DESC"
         with self._lock:
-            rows = self._conn.execute(
-                f"SELECT envelope_json, lifecycle, reason FROM canonical_signals {where} ORDER BY rowid DESC",
-                (*params,),
-            ).fetchall()
+            rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     def get_signal(self, signal_id: str) -> dict[str, Any] | None:
@@ -172,22 +170,18 @@ class CanonicalSignalRegistry:
         from datetime import UTC, datetime, timedelta
 
         cutoff = datetime.now(UTC) - timedelta(seconds=min_age_seconds)
-        clauses = [
-            "lifecycle = 'emitted'",
-            "created_at <= ?",
-        ]
+        query = (
+            "SELECT envelope_json, lifecycle, reason FROM canonical_signals"
+            " WHERE lifecycle = 'emitted' AND created_at <= ?"
+        )
         params: list[Any] = [str(cutoff)]
         if signal_class is not None:
-            clauses.append("signal_class = ?")
+            query += " AND signal_class = ?"
             params.append(signal_class.value)
-        where = f"WHERE {' AND '.join(clauses)}"
+        query += " ORDER BY created_at ASC LIMIT ?"
+        params.append(limit)
         with self._lock:
-            sql = (
-                f"SELECT envelope_json, lifecycle, reason "
-                f"FROM canonical_signals {where} "
-                f"ORDER BY created_at ASC LIMIT ?"
-            )
-            rows = self._conn.execute(sql, (*params, limit)).fetchall()
+            rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
     # ------------------------------------------------------------------

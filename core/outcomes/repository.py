@@ -181,20 +181,18 @@ class OutcomeRepository:
         offset: int = 0,
     ) -> list[SignalOutcome]:
         """Query outcomes with optional filters."""
-        clauses: list[str] = []
+        query = "SELECT * FROM signal_outcomes WHERE 1=1"
         params: list[Any] = []
         if asset is not None:
-            clauses.append("asset = ?")
+            query += " AND asset = ?"
             params.append(asset)
         if outcome_label is not None:
-            clauses.append("outcome_label = ?")
+            query += " AND outcome_label = ?"
             params.append(outcome_label.value)
-        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        query += " ORDER BY emitted_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
         with self._lock:
-            rows = self._conn.execute(
-                f"SELECT * FROM signal_outcomes {where} ORDER BY emitted_at DESC LIMIT ? OFFSET ?",
-                (*params, limit, offset),
-            ).fetchall()
+            rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_outcome(r) for r in rows]
 
     def count(self, outcome_label: OutcomeLabel | None = None) -> int:
