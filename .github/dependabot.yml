@@ -13,3 +13,6 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: pandas
+        update-types: [version-update:semver-major]
