@@ -184,8 +184,8 @@ class FreqtradeBridge:
         now = time.monotonic()
 
         # --- Rate limiting ---
-        last = self._last_call_time.get(pair, 0.0)
-        if now - last < self.min_interval_seconds:
+        last = self._last_call_time.get(pair)
+        if last is not None and now - last < self.min_interval_seconds:
             # Return cached if available, otherwise hold
             cached = self._cache.get(pair)
             if cached and (now - cached["time"]) < self.cache_ttl_seconds:

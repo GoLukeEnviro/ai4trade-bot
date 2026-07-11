@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 
 from rainbow.collectors.reddit_collector import RedditCollector
 from rainbow.collectors.twitter_collector import TwitterCollector
@@ -6,9 +7,11 @@ from rainbow.models.signal import Direction, SignalType
 
 
 class TestTwitterCollector:
-    @pytest.fixture
-    def collector(self):
-        return TwitterCollector(bearer_token="test-token", assets=["BTC"])
+    @pytest_asyncio.fixture
+    async def collector(self):
+        collector = TwitterCollector(bearer_token="test-token", assets=["BTC"])
+        yield collector
+        await collector.close()
 
     def test_name(self, collector):
         assert collector.name == "twitter"
@@ -16,8 +19,11 @@ class TestTwitterCollector:
     @pytest.mark.anyio
     async def test_collect_without_token_returns_empty(self):
         col = TwitterCollector(bearer_token="", assets=["BTC"])
-        signals = await col.collect()
-        assert signals == []
+        try:
+            signals = await col.collect()
+            assert signals == []
+        finally:
+            await col.close()
 
     def test_analyze_bullish_tweets(self, collector):
         tweets = [
@@ -63,13 +69,18 @@ class TestTwitterCollector:
     @pytest.mark.anyio
     async def test_health_check_no_token(self):
         col = TwitterCollector(bearer_token="")
-        assert await col.health_check() is False
+        try:
+            assert await col.health_check() is False
+        finally:
+            await col.close()
 
 
 class TestRedditCollector:
-    @pytest.fixture
-    def collector(self):
-        return RedditCollector(assets=["BTC"])
+    @pytest_asyncio.fixture
+    async def collector(self):
+        collector = RedditCollector(assets=["BTC"])
+        yield collector
+        await collector.close()
 
     def test_name(self, collector):
         assert collector.name == "reddit"
@@ -111,12 +122,16 @@ class TestRedditCollector:
         signal = collector._analyze_posts(titles, total_score=50, asset="BTC")
         assert signal.direction == Direction.NEUTRAL
 
-    def test_custom_subreddits(self):
+    @pytest.mark.anyio
+    async def test_custom_subreddits(self):
         col = RedditCollector(
             assets=["SOL"],
             subreddits={"SOL": ["solana", "cryptocurrency"]},
         )
-        assert col.name == "reddit"
+        try:
+            assert col.name == "reddit"
+        finally:
+            await col.close()
 
     @pytest.mark.anyio
     async def test_collect_with_mocked_api(self, collector):

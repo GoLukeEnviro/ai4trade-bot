@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -274,6 +274,21 @@ class TestBridgeCaching:
 # ---------------------------------------------------------------------------
 
 class TestBridgeRateLimiting:
+    def test_first_call_is_not_rate_limited_on_early_monotonic_clock(self):
+        env = _make_envelope(
+            direction=SignalDirection.BULLISH,
+            confidence=0.9,
+            risk_score=0.2,
+        )
+        registry = _make_registry_with_signal(env)
+        bridge = FreqtradeBridge(registry, min_interval_seconds=100.0)
+
+        with patch("integrations.freqtrade_bridge.time.monotonic", return_value=1.0):
+            result = bridge.get_latest_signal("BTC/USDT")
+
+        assert result["action"] == "buy"
+        registry.close()
+
     def test_rate_limits_repeated_calls(self):
         env = _make_envelope(
             direction=SignalDirection.BULLISH,
