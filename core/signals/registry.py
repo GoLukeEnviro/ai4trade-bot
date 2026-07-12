@@ -52,7 +52,7 @@ class CanonicalSignalRegistry:
         automatically.
     """
 
-    def __init__(self, db_path: str = "storage/canonical_signals.db") -> None:
+    def __init__(self, db_path: str = "rainbow/storage/canonical_signals.db") -> None:
         self._db_path = db_path
         self._lock = threading.Lock()
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)

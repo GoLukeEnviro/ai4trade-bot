@@ -48,6 +48,19 @@ def registry(tmp_path):
     reg.close()
 
 
+def test_default_db_path_matches_canonical_rainbow_storage_prefix():
+    """Must stay under rainbow/storage/, matching db_path's own default
+    (rainbow/storage/signals.db) and the heartbeat path (rainbow/paths.py).
+    A previous inconsistency here (bare storage/...) meant Rainbow's
+    canonical registry tried to write outside the mounted volume.
+    """
+    import inspect
+
+    sig = inspect.signature(CanonicalSignalRegistry.__init__)
+    default = sig.parameters["db_path"].default
+    assert default.startswith("rainbow/storage/"), default
+
+
 # ======================================================================
 # Append and query
 # ======================================================================
