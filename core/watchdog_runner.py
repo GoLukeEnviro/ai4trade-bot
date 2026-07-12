@@ -100,7 +100,7 @@ def _default_config() -> dict[str, Any]:
             },
             {
                 "name": "rainbow",
-                "heartbeat_path": "storage/heartbeat_rainbow.json",
+                "heartbeat_path": "rainbow/storage/heartbeat_rainbow.json",
                 "stale_threshold_seconds": 120.0,
                 "cooldown_seconds": 300.0,
             },

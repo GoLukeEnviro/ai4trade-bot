@@ -192,12 +192,18 @@ class TestAPI:
 
     @pytest.mark.anyio
     async def test_health_endpoint(self, app_and_store):
+        # This fixture never runs the real lifespan (no HeartbeatWriter), so
+        # /health correctly fail-closes to 503 "starting" within the grace
+        # period — see tests/rainbow/test_health_endpoint.py for the full
+        # fail-closed contract (fresh heartbeat + ready store + no collector
+        # errors -> 200).
         app, store = app_and_store
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/health")
-            assert resp.status_code == 200
+            assert resp.status_code == 503
             data = resp.json()
-            assert data["status"] == "healthy"
+            assert data["status"] == "starting"
+            assert data["store_ready"] is True
 
     @pytest.mark.anyio
     async def test_signals_latest_empty(self, app_and_store):

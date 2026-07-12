@@ -3,10 +3,14 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from core.heartbeat_writer import read_heartbeat
+from rainbow.distribution import guards
 from rainbow.distribution.webhooks import WebhookManager, WebhookSubscription
+from rainbow.paths import HEARTBEAT_PATH
 
 _start_time: float = 0.0
 _store: Any = None
@@ -34,6 +38,7 @@ def create_app(store: Any, settings: Any, engine: Any = None, enable_metrics: bo
     _engine = engine
     _start_time = time.monotonic()
     _collector_status = {}
+    guards.configure(settings)
 
     app = FastAPI(title="Rainbow Intelligence Engine", version="0.1.0")
     _register_routes(app)
@@ -65,13 +70,46 @@ def _register_routes(app: FastAPI) -> None:
         init_ingest_router(_ingestor)
 
     @app.get("/health")
-    async def health() -> dict[str, Any]:
+    async def health() -> JSONResponse:
         uptime = time.monotonic() - _start_time
-        return {
-            "status": "healthy",
-            "collectors": _collector_status,
+        grace_period = getattr(_settings, "health_grace_period_seconds", 60) if _settings else 60
+        max_heartbeat_age = getattr(_settings, "health_max_heartbeat_age_seconds", 120) if _settings else 120
+        within_grace = uptime < grace_period
+
+        hb = read_heartbeat(HEARTBEAT_PATH)
+        heartbeat_age = round(time.time() - hb["timestamp_unix"], 1) if hb else None
+        heartbeat_fresh = heartbeat_age is not None and heartbeat_age <= max_heartbeat_age
+
+        store_ready = _store is not None
+        collector_errors = [name for name, s in _collector_status.items() if s == "error"]
+        collectors_fresh = not collector_errors
+
+        if within_grace and hb is None:
+            status_code, overall = 503, "starting"
+        elif not heartbeat_fresh:
+            status_code, overall = 503, "unhealthy"
+        elif not store_ready:
+            status_code, overall = 503, "unhealthy"
+        elif not collectors_fresh:
+            status_code, overall = 503, "unhealthy"
+        else:
+            status_code, overall = 200, "healthy"
+
+        body = {
+            "status": overall,
+            "read_only": bool(getattr(_settings, "read_only", True)) if _settings else True,
             "uptime_seconds": round(uptime, 1),
+            "within_grace_period": within_grace,
+            "heartbeat": {
+                "present": hb is not None,
+                "age_seconds": heartbeat_age,
+                "fresh": heartbeat_fresh,
+            },
+            "store_ready": store_ready,
+            "collectors": _collector_status,
+            "collectors_fresh": collectors_fresh,
         }
+        return JSONResponse(status_code=status_code, content=body)
 
     @app.get("/signals/latest")
     async def signals_latest(
@@ -117,7 +155,7 @@ def _register_routes(app: FastAPI) -> None:
 
     # --- Webhook-Endpoints ---
 
-    @app.post("/webhooks/subscribe")
+    @app.post("/webhooks/subscribe", dependencies=[Depends(guards.require_write_enabled)])
     async def webhook_subscribe(body: WebhookSubscribeRequest) -> dict[str, str]:
         if _webhook_manager is None:
             raise HTTPException(status_code=503, detail="Webhook manager not ready")
@@ -132,7 +170,7 @@ def _register_routes(app: FastAPI) -> None:
         sub_id = _webhook_manager.subscribe(subscription)
         return {"subscription_id": sub_id}
 
-    @app.delete("/webhooks/{sub_id}")
+    @app.delete("/webhooks/{sub_id}", dependencies=[Depends(guards.require_write_enabled)])
     async def webhook_unsubscribe(sub_id: str) -> dict[str, bool]:
         if _webhook_manager is None:
             raise HTTPException(status_code=503, detail="Webhook manager not ready")

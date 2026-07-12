@@ -320,9 +320,13 @@ class TestRegression:
     """Existing API routes must still function after adding the ingest router."""
 
     def test_health_still_works(self, client: TestClient) -> None:
+        # No heartbeat file exists in this fixture, so /health fail-closes to
+        # 503 "starting" within the grace period — see tests/rainbow/test_health_endpoint.py
+        # for the full fail-closed contract. This test only guards that
+        # registering the ingest router didn't break the endpoint itself.
         resp = client.get("/health")
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "healthy"
+        assert resp.status_code == 503
+        assert resp.json()["status"] == "starting"
 
     def test_signals_latest_still_works(self, client: TestClient, registry: CanonicalSignalRegistry) -> None:
         # The /signals/latest endpoint requires a store, which is None in tests

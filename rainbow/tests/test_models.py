@@ -158,6 +158,17 @@ class TestRainbowSettings:
         assert s.log_level == "DEBUG"
         assert s.api.port == 9000
 
+    def test_read_only_defaults_to_true(self):
+        assert RainbowSettings().read_only is True
+
+    def test_read_only_env_override(self, monkeypatch):
+        monkeypatch.setenv("RAINBOW_READ_ONLY", "false")
+        assert RainbowSettings().read_only is False
+
+    def test_unknown_field_rejected(self):
+        with pytest.raises(ValidationError):
+            RainbowSettings(unknown_field="oops")
+
 
 class TestExceptions:
     def test_collector_error_attributes(self):

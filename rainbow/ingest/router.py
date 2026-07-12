@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from rainbow.distribution import guards
 from rainbow.ingest.ingest import RainbowIngestor
 from rainbow.ingest.models import RainbowIngestRequest, RainbowIngestResult
 
@@ -27,7 +28,11 @@ def init_ingest_router(ingestor: RainbowIngestor) -> None:
     _ingestor = ingestor
 
 
-@router.post("/ingest", response_model=RainbowIngestResult)
+@router.post(
+    "/ingest",
+    response_model=RainbowIngestResult,
+    dependencies=[Depends(guards.require_write_enabled)],
+)
 async def ingest_signal(body: RainbowIngestRequest) -> RainbowIngestResult:
     """Accept an external signal and persist it in the canonical registry.
 

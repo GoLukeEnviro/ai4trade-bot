@@ -119,3 +119,47 @@ scorer:
         with patch("rainbow.main.create_engine", return_value="fastapi-app"):
             create_app()
         assert len(logger.handlers) == 1
+
+
+class TestFactoryRespectsConfigEnvVar:
+    """RAINBOW_CONFIG must override the hardcoded default config path."""
+
+    def test_factory_uses_rainbow_config_env_var(self, tmp_path, monkeypatch):
+        """create_app() loads settings from the path given by RAINBOW_CONFIG,
+        not from the hardcoded 'rainbow/config.yaml'."""
+        custom_config = tmp_path / "custom-location.yaml"
+        custom_config.write_text("""
+log_level: DEBUG
+log_format: text
+api:
+  host: "127.0.0.1"
+  port: 9123
+db_path: ":memory:"
+collectors: {}
+market_data:
+  bitget_base_url: "https://api.bitget.com"
+scorer:
+  weights:
+    technical: 0.5
+    sentiment: 0.3
+    social: 0.1
+    news: 0.1
+""")
+        monkeypatch.setenv("RAINBOW_CONFIG", str(custom_config))
+
+        logger = logging.getLogger("rainbow")
+        logger.handlers.clear()
+
+        from rainbow.main import create_app
+
+        captured_settings = {}
+
+        def _fake_create_engine(settings):
+            captured_settings["settings"] = settings
+            return "fastapi-app"
+
+        with patch("rainbow.main.create_engine", side_effect=_fake_create_engine):
+            result = create_app()
+
+        assert result == "fastapi-app"
+        assert captured_settings["settings"].api.port == 9123

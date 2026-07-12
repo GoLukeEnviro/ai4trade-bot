@@ -27,6 +27,7 @@ from rainbow.distribution.metrics import (
 from rainbow.distribution.webhooks import WebhookManager
 from rainbow.evaluation.llm_evaluator import LLMEvaluator
 from rainbow.market_data.bitget import BitgetClient
+from rainbow.paths import HEARTBEAT_PATH
 from rainbow.processor.scorer import RainbowScorer
 from rainbow.processor.store import SignalStore
 
@@ -299,7 +300,7 @@ def create_engine(settings: RainbowSettings) -> FastAPI:
 
         # Heartbeat writer for Rainbow runtime health
         hb_writer = HeartbeatWriter(
-            "storage/heartbeat_rainbow.json",
+            HEARTBEAT_PATH,
             component="rainbow",
             extra={"host": settings.api.host, "port": settings.api.port},
         )
@@ -337,9 +338,10 @@ def create_engine(settings: RainbowSettings) -> FastAPI:
 
 def create_app() -> FastAPI:
     """Factory function for uvicorn --factory mode (no arguments)."""
+    import os
     from pathlib import Path
 
-    config_path = Path("rainbow/config.yaml")
+    config_path = Path(os.environ.get("RAINBOW_CONFIG", "rainbow/config.yaml"))
     settings = RainbowSettings.from_yaml(config_path)
     setup_logging(level=settings.log_level, fmt=settings.log_format)
     return create_engine(settings)
@@ -347,9 +349,10 @@ def create_app() -> FastAPI:
 
 def main() -> None:
     """Entry point: Settings laden, Logging konfigurieren, Server starten."""
+    import os
     from pathlib import Path
 
-    config_path = Path("rainbow/config.yaml")
+    config_path = Path(os.environ.get("RAINBOW_CONFIG", "rainbow/config.yaml"))
     settings = RainbowSettings.from_yaml(config_path)
 
     print_whimsy_banner("Rainbow Intelligence Engine", "Signal-Storytelling in Farbe")
