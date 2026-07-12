@@ -96,7 +96,14 @@ class RainbowSettings(BaseSettings):
 
     db_path: str = "rainbow/storage/signals.db"
 
-    model_config = SettingsConfigDict(env_prefix="RAINBOW_", env_nested_delimiter="__")
+    read_only: bool = True
+
+    # /health fail-closed contract (see docs/reports/runtime-health-watchdog-report.md).
+    # max_heartbeat_age matches the existing watchdog stale_threshold_seconds default.
+    health_grace_period_seconds: int = Field(default=60, ge=0)
+    health_max_heartbeat_age_seconds: int = Field(default=120, ge=1)
+
+    model_config = SettingsConfigDict(env_prefix="RAINBOW_", env_nested_delimiter="__", extra="forbid")
 
     @classmethod
     def from_yaml(cls, path: Path) -> "RainbowSettings":
