@@ -19,12 +19,16 @@ The script:
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import sqlite3
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from rainbow.processor.xgboost_scorer import FEATURE_COLUMNS
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +38,105 @@ log = logging.getLogger("train_xgboost")
 
 
 REQUIRED_COLUMNS = {"open", "high", "low", "close"}
+DEFAULT_SIGNAL_DB = "rainbow/storage/canonical_signals.db"
+DEFAULT_OUTCOMES_DB = "storage/outcomes.db"
+
+
+def load_training_data(
+    db_path: str = DEFAULT_SIGNAL_DB,
+    outcomes_db_path: str | None = DEFAULT_OUTCOMES_DB,
+    min_samples: int = 200,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Load resolved win/loss outcomes and their canonical-envelope features.
+
+    The production registry keeps envelopes and outcomes in separate SQLite
+    databases, so the latter is attached read-only for the join.  Passing the
+    same path supports installations that colocate both tables.
+    """
+    conn = sqlite3.connect(db_path)
+    outcome_table = "signal_outcomes"
+    try:
+        if outcomes_db_path is not None and Path(outcomes_db_path).resolve() != Path(db_path).resolve():
+            conn.execute("ATTACH DATABASE ? AS outcomes", (outcomes_db_path,))
+            outcome_table = "outcomes.signal_outcomes"
+        rows = conn.execute(
+            f"""
+            SELECT cs.envelope_json, so.outcome_label, so.confidence_at_signal
+            FROM canonical_signals AS cs
+            JOIN {outcome_table} AS so ON cs.id = so.signal_id
+            WHERE so.outcome_label IN ('win', 'loss')
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    finally:
+        conn.close()
+
+    records: list[dict[str, float]] = []
+    labels: list[int] = []
+    for envelope_json, outcome_label, confidence_at_signal in rows:
+        try:
+            envelope = json.loads(envelope_json)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        record = {column: 0.0 for column in FEATURE_COLUMNS}
+        for column, value in (envelope.get("features") or {}).items():
+            if column in record and isinstance(value, (int, float)):
+                record[column] = float(value)
+        created_at = envelope.get("created_at")
+        if created_at:
+            try:
+                timestamp = pd.Timestamp(created_at)
+                record["hour_of_day"] = float(timestamp.hour)
+                record["day_of_week"] = float(timestamp.dayofweek)
+            except (TypeError, ValueError):
+                pass
+        record["confidence"] = float(confidence_at_signal or envelope.get("confidence") or 0.0)
+        record["risk_score"] = float(envelope.get("risk_score") or 0.0)
+        records.append(record)
+        labels.append(int(outcome_label == "win"))
+
+    features = pd.DataFrame(records, columns=FEATURE_COLUMNS).fillna(0.0)
+    target = pd.Series(labels, dtype="int64")
+    if len(features) < min_samples:
+        raise ValueError(f"Zu wenig Trainingsdaten: {len(features)} (min. {min_samples} erforderlich)")
+    return features, target
+
+
+def train_signal_scorer(features: pd.DataFrame, labels: pd.Series):
+    """Train the outcome-derived model after the R7 sample threshold is met."""
+    if len(features) < 200:
+        raise ValueError(f"Zu wenig Trainingsdaten: {len(features)} (min. 200 erforderlich)")
+    from sklearn.model_selection import train_test_split
+    from xgboost import XGBClassifier
+
+    x_train, x_val, y_train, y_val = train_test_split(
+        features,
+        labels,
+        test_size=0.2,
+        random_state=42,
+        stratify=labels,
+    )
+    model = XGBClassifier(
+        n_estimators=200,
+        max_depth=6,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        eval_metric="logloss",
+        random_state=42,
+    )
+    model.fit(x_train, y_train, eval_set=[(x_val, y_val)], verbose=False)
+    return model
+
+
+def export_signal_scorer(model, path: str = "models/xgboost_signal_scorer.json") -> Path:
+    """Persist a trained scorer without committing the binary model artifact."""
+    model_path = Path(path)
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model.save_model(model_path)
+    log.info("Signal scorer saved to %s", model_path)
+    return model_path
 
 
 def validate_schema(df: pd.DataFrame) -> None:
@@ -173,12 +276,26 @@ def parse_args() -> argparse.Namespace:
         description="Train XGBoost model for ai4trade-bot PredictiveEngine"
     )
     parser.add_argument(
-        "--data", required=True, help="Path to OHLCV CSV/feather/parquet file"
+        "--data", help="Path to OHLCV CSV/feather/parquet file"
     )
     parser.add_argument(
         "--output",
         default="models/predictive/",
         help="Output directory for trained model (default: models/predictive/)",
+    )
+    parser.add_argument(
+        "--signals-db",
+        help="Train the signal scorer from this canonical registry SQLite database.",
+    )
+    parser.add_argument(
+        "--outcomes-db",
+        default=DEFAULT_OUTCOMES_DB,
+        help="Path to the signal outcome SQLite database.",
+    )
+    parser.add_argument(
+        "--signal-model-output",
+        default="models/xgboost_signal_scorer.json",
+        help="Output path for the outcome-trained signal scorer.",
     )
     parser.add_argument(
         "--test-size",
@@ -197,6 +314,13 @@ def main() -> None:
     log.info("Output: %s", args.output)
 
     try:
+        if args.signals_db:
+            features, labels = load_training_data(args.signals_db, args.outcomes_db)
+            model = train_signal_scorer(features, labels)
+            export_signal_scorer(model, args.signal_model_output)
+            return
+        if not args.data:
+            raise ValueError("--data is required unless --signals-db is provided")
         df = load_data(args.data)
         validate_schema(df)
 
