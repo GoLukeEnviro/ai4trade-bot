@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -157,6 +158,13 @@ class TestRainbowSettings:
         s = RainbowSettings.from_yaml(path)
         assert s.log_level == "DEBUG"
         assert s.api.port == 9000
+
+    def test_repository_config_disables_evaluation_pending_r7_evidence(self):
+        settings = RainbowSettings.from_yaml(Path("rainbow/config.yaml"))
+
+        assert settings.evaluation.enabled is False
+        assert settings.evaluation.primary_model == "deepseek-v4-pro"
+        assert settings.evaluation.timeout_seconds == 6.0
 
     def test_read_only_defaults_to_true(self):
         assert RainbowSettings().read_only is True
