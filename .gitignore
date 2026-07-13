@@ -24,3 +24,12 @@ agent-tools/
 pytest_full.txt
 pytest_out.txt
 whats-next.md
+
+# SQLite databases (runtime artifacts)
+*.db
+*.db-wal
+*.db-shm
+rainbow/storage/
+!rainbow/storage/
+rainbow/storage/*
+!rainbow/storage/.gitkeep

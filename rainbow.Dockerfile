@@ -19,7 +19,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY core ./core
 COPY rainbow ./rainbow
 
-RUN chown -R rainbow:rainbow /app
+RUN mkdir -p /app/rainbow/storage \
+    && chown -R rainbow:rainbow /app
 
 USER rainbow
 
