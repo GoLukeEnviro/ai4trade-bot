@@ -72,7 +72,7 @@ class TestDockerfileStaticContract:
 
     def test_dockerfile_does_not_run_as_root_or_named_user(self):
         content = DOCKERFILE.read_text()
-        lines = [l.strip() for l in content.splitlines() if l.strip().startswith("USER ")]
+        lines = [line.strip() for line in content.splitlines() if line.strip().startswith("USER ")]
         assert lines == ["USER 10000:10000"]
 
     def test_dockerignore_excludes_runtime_storage(self):
