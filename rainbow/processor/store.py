@@ -62,6 +62,12 @@ class SignalStore:
         )
         await self._conn.commit()
 
+    async def count(self) -> int:
+        """Return the total number of signals stored in the database."""
+        cursor = await self._conn.execute("SELECT COUNT(*) FROM signals")
+        row = await cursor.fetchone()
+        return int(row[0]) if row else 0
+
     async def get_latest(
         self,
         asset: str | None = None,
