@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 
@@ -63,6 +63,14 @@ def _parse_utc_timestamp(value: Any) -> datetime:
     if parsed.tzinfo is None:
         raise ValueError("created_at must include a timezone")
     return parsed.astimezone(timezone.utc)
+
+
+def _validate_base_url(value: str) -> str:
+    """Accept only explicit HTTP(S) Rainbow endpoints, never local files."""
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("--base-url must be an http or https URL with a host")
+    return value.rstrip("/")
 
 
 def validate_snapshot(
@@ -192,7 +200,8 @@ def validate_snapshot(
 
 def _fetch_json(url: str, timeout_seconds: float) -> Any:
     try:
-        with urlopen(url, timeout=timeout_seconds) as response:  # noqa: S310 -- target is an explicit CLI argument
+        # _validate_base_url restricts the CLI target to HTTP(S).
+        with urlopen(url, timeout=timeout_seconds) as response:  # nosec B310
             if response.status != 200:
                 raise SmokeCheckError(f"GET {url} returned HTTP {response.status}")
             return json.loads(response.read().decode("utf-8"))
@@ -224,12 +233,38 @@ def _save_snapshot(snapshot_path: Path, snapshot: dict[str, Any]) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate the read-only R7 Rainbow deployment contract")
-    parser.add_argument("--base-url", required=True, help="Rainbow base URL, e.g. http://127.0.0.1:8000")
-    parser.add_argument("--expected-collector", action="append", default=None, help="Collector expected to be running (repeatable; default: ta)")
-    parser.add_argument("--allow-extra-collectors", action="store_true", help="Do not fail when additional collectors are active")
-    parser.add_argument("--require-signal", action="store_true", help="Fail if the canonical endpoint is empty")
-    parser.add_argument("--snapshot-path", type=Path, help="External JSON path used to detect a decreasing stored-signal count")
-    parser.add_argument("--timeout-seconds", type=float, default=10.0, help="HTTP timeout per endpoint (default: 10)")
+    parser.add_argument(
+        "--base-url",
+        required=True,
+        help="Rainbow base URL, e.g. http://127.0.0.1:8000",
+    )
+    parser.add_argument(
+        "--expected-collector",
+        action="append",
+        default=None,
+        help="Collector expected to be running (repeatable; default: ta)",
+    )
+    parser.add_argument(
+        "--allow-extra-collectors",
+        action="store_true",
+        help="Do not fail when additional collectors are active",
+    )
+    parser.add_argument(
+        "--require-signal",
+        action="store_true",
+        help="Fail if the canonical endpoint is empty",
+    )
+    parser.add_argument(
+        "--snapshot-path",
+        type=Path,
+        help="External JSON path used to detect a decreasing stored-signal count",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=10.0,
+        help="HTTP timeout per endpoint (default: 10)",
+    )
     return parser.parse_args(argv)
 
 
@@ -237,7 +272,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.timeout_seconds <= 0:
         raise SystemExit("--timeout-seconds must be greater than zero")
-    base_url = args.base_url.rstrip("/")
+    try:
+        base_url = _validate_base_url(args.base_url)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     expected_collectors = args.expected_collector or ["ta"]
     try:
         previous_count = _load_previous_count(args.snapshot_path) if args.snapshot_path else None

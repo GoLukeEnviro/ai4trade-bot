@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from scripts.r7_smoke_check import validate_snapshot
+import pytest
 
+from scripts.r7_smoke_check import _validate_base_url, validate_snapshot
 
 NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
 
@@ -95,3 +96,10 @@ def test_rejects_metrics_regression_between_smoke_cycles() -> None:
 
     assert not result.ok
     assert any("regressed" in error for error in result.errors)
+
+
+def test_only_http_urls_with_a_host_are_allowed_for_r7_checks() -> None:
+    assert _validate_base_url("http://127.0.0.1:8000/") == "http://127.0.0.1:8000"
+
+    with pytest.raises(ValueError, match="http or https"):
+        _validate_base_url("file:///app/rainbow/storage/signals.db")
