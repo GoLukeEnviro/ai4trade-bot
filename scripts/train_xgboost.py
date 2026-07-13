@@ -54,19 +54,23 @@ def load_training_data(
     same path supports installations that colocate both tables.
     """
     conn = sqlite3.connect(db_path)
-    outcome_table = "signal_outcomes"
     try:
         if outcomes_db_path is not None and Path(outcomes_db_path).resolve() != Path(db_path).resolve():
             conn.execute("ATTACH DATABASE ? AS outcomes", (outcomes_db_path,))
-            outcome_table = "outcomes.signal_outcomes"
-        rows = conn.execute(
-            f"""
+            query = """
             SELECT cs.envelope_json, so.outcome_label, so.confidence_at_signal
             FROM canonical_signals AS cs
-            JOIN {outcome_table} AS so ON cs.id = so.signal_id
+            JOIN outcomes.signal_outcomes AS so ON cs.id = so.signal_id
             WHERE so.outcome_label IN ('win', 'loss')
             """
-        ).fetchall()
+        else:
+            query = """
+            SELECT cs.envelope_json, so.outcome_label, so.confidence_at_signal
+            FROM canonical_signals AS cs
+            JOIN signal_outcomes AS so ON cs.id = so.signal_id
+            WHERE so.outcome_label IN ('win', 'loss')
+            """
+        rows = conn.execute(query).fetchall()
     except sqlite3.OperationalError:
         rows = []
     finally:

@@ -115,5 +115,6 @@ def test_fixture_contains_30_days_of_ohlcv_and_20_canonical_signals(tmp_path: Pa
 
     assert len(fixture.price_data["BTC/USDT:USDT"]) == 30 * 24
     assert len(fixture.signals) == 20
+    assert result.metrics["sharpe_ratio"] >= -2.0
     assert "# Backtest Report" in generate_markdown_report(result, str(report_path))
     assert report_path.exists()
