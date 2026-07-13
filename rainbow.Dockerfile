@@ -9,20 +9,29 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12-slim AS runtime
 
-RUN groupadd -r rainbow && useradd -r -g rainbow rainbow
+ARG RAINBOW_UID=10000
+ARG RAINBOW_GID=10000
+
+RUN groupadd --gid "${RAINBOW_GID}" rainbow \
+    && useradd \
+       --uid "${RAINBOW_UID}" \
+       --gid "${RAINBOW_GID}" \
+       --no-create-home \
+       --shell /usr/sbin/nologin \
+       rainbow
 
 WORKDIR /app
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-COPY core ./core
-COPY rainbow ./rainbow
+COPY --chown=10000:10000 core ./core
+COPY --chown=10000:10000 rainbow ./rainbow
 
 RUN mkdir -p /app/rainbow/storage \
-    && chown -R rainbow:rainbow /app
+    && chown -R 10000:10000 /app
 
-USER rainbow
+USER 10000:10000
 
 EXPOSE 8000
 
