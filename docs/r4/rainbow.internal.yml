@@ -46,6 +46,19 @@ collectors:
         - 1h
         - 4h
 
+  # R7 baseline: implementation is deployed but receives no production traffic.
+  # Do not enable until the R7 release gate has explicitly approved it.
+  derivatives:
+    enabled: false
+    interval_seconds: 300
+    assets:
+      - BTC/USDT:USDT
+      - ETH/USDT:USDT
+      - SOL/USDT:USDT
+    params:
+      funding_extreme_threshold: 0.0005
+      oi_spike_multiplier: 1.5
+
   # Weitere Collector für die erste Messphase bewusst deaktiviert.
   # Aktivierung erst nach R7-Evidenz.
   # twitter:
@@ -57,6 +70,8 @@ collectors:
 
 evaluation:
   enabled: false
+  critic:
+    enabled: false
   # model: deepseek-reasoner
   # timeout_seconds: 5.0
   # threshold: 0.5

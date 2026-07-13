@@ -32,6 +32,8 @@ services:
       # Logging für bessere Lesbarkeit beim Testen
       RAINBOW_LOG_LEVEL: INFO
       RAINBOW_LOG_FORMAT: text
+      # R7 safety baseline: no delivery worker may dispatch signals.
+      AI4TRADE_DELIVERY_MODE: off
     restart: unless-stopped
     healthcheck:
       # HTTP /health — zuverlässiger als Heartbeat-Datei-Pfad für Standalone-Tests

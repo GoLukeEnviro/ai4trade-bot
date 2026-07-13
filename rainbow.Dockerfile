@@ -27,6 +27,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY --chown=10000:10000 core ./core
 COPY --chown=10000:10000 rainbow ./rainbow
+COPY --chown=10000:10000 scripts/r7_smoke_check.py ./scripts/r7_smoke_check.py
 
 RUN mkdir -p /app/rainbow/storage \
     && chown -R 10000:10000 /app

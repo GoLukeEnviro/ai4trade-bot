@@ -25,6 +25,7 @@ services:
       # Für reinen TA-Baseline-Betrieb (public APIs)
       RAINBOW_LOG_LEVEL: "INFO"
       RAINBOW_LOG_FORMAT: "json"
+      AI4TRADE_DELIVERY_MODE: "off"
       # Weitere RAINBOW_* Keys nur bei Bedarf setzen (z.B. für LLM Collector später)
     restart: unless-stopped
     healthcheck:

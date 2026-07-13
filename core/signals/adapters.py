@@ -144,13 +144,21 @@ def from_rainbow_signal(
 
     sig_class = _rainbow_signal_type_to_class(signal.signal_type)
 
+    signal_timestamp = signal.timestamp
+    if signal_timestamp.tzinfo is None:
+        signal_timestamp = signal_timestamp.replace(tzinfo=UTC)
+    freshness_seconds = max(
+        0,
+        int((datetime.now(UTC) - signal_timestamp).total_seconds()),
+    )
+
     return CanonicalSignalEnvelope(
         signal_class=sig_class,
         subtype=signal.signal_type.value if signal.signal_type else "unknown",
         source=f"rainbow:{signal.source}",
         asset=signal.asset,
         timeframe=None,
-        created_at=signal.timestamp,
+        created_at=signal_timestamp,
         direction=direction,
         confidence=signal.strength,
         risk_score=risk_score,
@@ -161,7 +169,7 @@ def from_rainbow_signal(
             status=DataQualityStatus.OK,
             source_latency_ms=None,
             source_quality=None,
-            freshness_seconds=None,
+            freshness_seconds=freshness_seconds,
         ),
         actionability=Actionability(can_alert=True),
         invalidation={"max_age_seconds": 3600, "conditions": []},
