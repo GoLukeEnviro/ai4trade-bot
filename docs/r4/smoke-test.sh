@@ -7,6 +7,8 @@ PROJECT_NAME="${RAINBOW_SMOKE_PROJECT:-rainbow-smoke}"
 RAINBOW_PORT="${RAINBOW_PORT:-18080}"
 DASHBOARD_PORT="${DASHBOARD_PORT:-18081}"
 WAIT_SECONDS="${WAIT_SECONDS:-90}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+SMOKE_SNAPSHOT="${RAINBOW_SMOKE_SNAPSHOT:-/tmp/${PROJECT_NAME}-r7-snapshot.json}"
 
 cd "${ROOT_DIR}"
 
@@ -30,19 +32,21 @@ until curl -fsS "http://localhost:${RAINBOW_PORT}/health" >/dev/null 2>&1; do
   sleep 3
 done
 
-echo "=== Endpoint checks ==="
-curl -fsS "http://localhost:${RAINBOW_PORT}/health" | tee /tmp/rainbow-health.json
-curl -fsS "http://localhost:${RAINBOW_PORT}/signals/canonical/latest?limit=5" >/dev/null
-curl -fsS "http://localhost:${RAINBOW_PORT}/metrics" >/dev/null
+echo "=== Read-only R7 endpoint gate (first cycle) ==="
+"${PYTHON_BIN}" "${ROOT_DIR}/scripts/r7_smoke_check.py" \
+  --base-url "http://localhost:${RAINBOW_PORT}" \
+  --expected-collector ta \
+  --snapshot-path "${SMOKE_SNAPSHOT}"
 curl -fsS "http://localhost:${DASHBOARD_PORT}/" | grep -q "Rainbow Test Dashboard"
 
 echo "=== Waiting 60s for TA collector cycle ==="
 sleep 60
-curl -fsS "http://localhost:${RAINBOW_PORT}/health" | tee /tmp/rainbow-health-after.json
 
-if ! grep -q '"ta":"running"' /tmp/rainbow-health-after.json; then
-  echo "WARNING: collectors.ta is not running yet"
-  grep '"collectors"' /tmp/rainbow-health-after.json || true
-fi
+echo "=== Read-only R7 endpoint gate (second cycle) ==="
+"${PYTHON_BIN}" "${ROOT_DIR}/scripts/r7_smoke_check.py" \
+  --base-url "http://localhost:${RAINBOW_PORT}" \
+  --expected-collector ta \
+  --require-signal \
+  --snapshot-path "${SMOKE_SNAPSHOT}"
 
 echo "=== Smoke test passed ==="

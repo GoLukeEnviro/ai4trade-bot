@@ -22,6 +22,7 @@ services:
     environment:
       RAINBOW_LOG_LEVEL: ${RAINBOW_LOG_LEVEL:-INFO}
       RAINBOW_LOG_FORMAT: ${RAINBOW_LOG_FORMAT:-json}
+      AI4TRADE_DELIVERY_MODE: ${AI4TRADE_DELIVERY_MODE:-off}
     restart: unless-stopped
     healthcheck:
       test:

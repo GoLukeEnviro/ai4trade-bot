@@ -22,7 +22,15 @@ in den vollständigen Multi-Collector-Betrieb (R7) übergeht.
 ### Signal-Integrität
 
 - [ ] Canonical Endpoint `/signals/canonical/latest` liefert valide Envelopes
+- [ ] Jeder geprüfte Envelope hat `data_quality.status: ok`, eine nichtnegative `freshness_seconds` und ist jünger als seine `invalidation.max_age_seconds`
+- [ ] `can_execute: false` bleibt in allen Envelopes gesetzt
 - [ ] `dry_run_only: true` bleibt in allen Envelopes gesetzt
+
+### Wiederholbarer Deployment-Gate
+
+- [ ] Zwei aufeinanderfolgende Läufe von `scripts/r7_smoke_check.py` sind grün
+- [ ] `signals_stored_count` sinkt zwischen diesen Läufen nicht
+- [ ] Genau der erwartete TA-Collector läuft; Derivatives, LLM und Delivery bleiben deaktiviert
 
 ## Freigabe-Prozess nach R7-Evidenz
 
