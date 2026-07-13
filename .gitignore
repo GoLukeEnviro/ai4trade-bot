@@ -13,6 +13,9 @@ build/
 .pytest_cache/
 models/predictive/*.json
 models/predictive/*.txt
+models/*
+!models/predictive/
+!models/predictive/.gitkeep
 *.db
 
 # Local session / tooling artifacts (not for commit)

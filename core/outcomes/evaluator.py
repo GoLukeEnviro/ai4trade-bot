@@ -85,6 +85,7 @@ class OutcomeEvaluator:
         entry_price = self._prices.get_price(asset, emitted_at)
         if entry_price is None or entry_price <= 0:
             log.info("No valid entry price for %s at %s — recording unknown", asset, emitted_at)
+            expired = self._is_expired(signal_data, emitted_at)
             return self._build_outcome(
                 signal_id=signal_id,
                 asset=asset,
@@ -95,9 +96,9 @@ class OutcomeEvaluator:
                 confidence=confidence,
                 entry_price=None,
                 outcome_price=None,
-                outcome_label=OutcomeLabel.UNKNOWN,
+                outcome_label=OutcomeLabel.EXPIRED if expired else OutcomeLabel.UNKNOWN,
                 outcome_score=0.0,
-                reason="no_entry_price",
+                reason="max_age_exceeded" if expired else "no_entry_price",
             )
 
         # Fetch outcome price (at evaluation window end)
@@ -105,6 +106,7 @@ class OutcomeEvaluator:
         outcome_price = self._prices.get_price(asset, eval_time)
         if outcome_price is None or outcome_price <= 0:
             log.info("No valid outcome price for %s at %s — recording unknown", asset, eval_time)
+            expired = self._is_expired(signal_data, emitted_at)
             return self._build_outcome(
                 signal_id=signal_id,
                 asset=asset,
@@ -115,9 +117,9 @@ class OutcomeEvaluator:
                 confidence=confidence,
                 entry_price=entry_price,
                 outcome_price=None,
-                outcome_label=OutcomeLabel.UNKNOWN,
+                outcome_label=OutcomeLabel.EXPIRED if expired else OutcomeLabel.UNKNOWN,
                 outcome_score=0.0,
-                reason="no_outcome_price",
+                reason="max_age_exceeded" if expired else "no_outcome_price",
             )
 
         # Compute price change
@@ -219,6 +221,22 @@ class OutcomeEvaluator:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_expired(signal_data: dict[str, Any], emitted_at: datetime) -> bool:
+        """Return true only when an explicit validity bound has elapsed."""
+        valid_until = signal_data.get("valid_until")
+        if valid_until:
+            try:
+                expires_at = datetime.fromisoformat(str(valid_until).replace("Z", "+00:00"))
+                return datetime.now(expires_at.tzinfo) >= expires_at
+            except ValueError:
+                return False
+        invalidation = signal_data.get("invalidation") or {}
+        max_age_seconds = invalidation.get("max_age_seconds")
+        if not isinstance(max_age_seconds, int) or max_age_seconds <= 0:
+            return False
+        return datetime.now(emitted_at.tzinfo) >= emitted_at + timedelta(seconds=max_age_seconds)
 
     def _build_outcome(
         self,

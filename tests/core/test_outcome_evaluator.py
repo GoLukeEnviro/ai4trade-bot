@@ -174,6 +174,24 @@ class TestEvaluateSignal:
         assert result.outcome_label == OutcomeLabel.UNKNOWN
         assert result.reason == "no_outcome_price"
 
+    def test_evaluate_expired_when_max_age_passes_without_resolution(self, tmp_repo):
+        emitted_at = datetime.now(UTC) - timedelta(hours=2)
+
+        def price_cb(asset, at_time):
+            return 50000.0 if at_time == emitted_at else None
+
+        ev = OutcomeEvaluator(tmp_repo, CallbackPriceProvider(price_cb))
+        result = ev.evaluate_signal(
+            _make_signal(
+                created_at=emitted_at,
+                invalidation={"max_age_seconds": 60},
+            )
+        )
+
+        assert result is not None
+        assert result.outcome_label == OutcomeLabel.EXPIRED
+        assert result.reason == "max_age_exceeded"
+
     def test_idempotent_duplicate_prevention(self, tmp_repo):
         """Running evaluate twice on same signal → skipped."""
         emitted_time = datetime.now(UTC) - timedelta(hours=2)

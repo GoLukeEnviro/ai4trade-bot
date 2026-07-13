@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rainbow.models.signal import CryptoSignal, Direction
 
@@ -39,6 +39,7 @@ class RainbowScorer:
         cross_signal_boost: float = 1.15,
         evaluator: LLMEvaluator | None = None,
         evaluation_threshold: float = 0.5,
+        xgboost_scorer: Any | None = None,
     ):
         self._weights = weights or self._DEFAULT_WEIGHTS
         self._decay_threshold = decay_threshold_seconds
@@ -46,6 +47,11 @@ class RainbowScorer:
         self._cross_signal_boost = cross_signal_boost
         self._evaluator = evaluator
         self._evaluation_threshold = evaluation_threshold
+        if xgboost_scorer is None:
+            from rainbow.processor.xgboost_scorer import XGBoostSignalScorer
+
+            xgboost_scorer = XGBoostSignalScorer()
+        self._xgboost_scorer = xgboost_scorer
 
     def score(self, signals: list[CryptoSignal]) -> list[CryptoSignal]:
         """Berechne rainbow_score fuer eine Gruppe von Signalen desselben Assets."""
@@ -54,9 +60,20 @@ class RainbowScorer:
 
         rainbow_score = self._compute_rainbow_score(signals)
         return [
-            sig.model_copy(update={"rainbow_score": rainbow_score})
+            sig.model_copy(update={"rainbow_score": self._ml_score(sig, rainbow_score)})
             for sig in signals
         ]
+
+    def _ml_score(self, signal: CryptoSignal, fallback_score: float) -> float:
+        """Use a persisted model when present; retain deterministic scoring otherwise."""
+        try:
+            from core.signals.adapters import from_rainbow_signal
+
+            model_score = self._xgboost_scorer.score(from_rainbow_signal(signal))
+        except Exception as exc:
+            logger.warning("XGBoost scoring failed for %s: %s", signal.asset, exc)
+            return fallback_score
+        return fallback_score if model_score is None else model_score
 
     async def score_and_evaluate(self, signals: list[CryptoSignal]) -> list[CryptoSignal]:
         """Score + optionale KI-Evaluierung. Async Wrapper fuer die Pipeline."""
