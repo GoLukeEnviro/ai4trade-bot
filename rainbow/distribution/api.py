@@ -140,8 +140,7 @@ def _register_routes(app: FastAPI) -> None:
         if _store is None:
             raise HTTPException(status_code=503, detail="Signal store not ready")
 
-        latest = await _store.get_latest(limit=1)
-        stored_count = len(latest)
+        stored_count = await _store.count()
 
         active_collectors = sum(
             1 for v in _collector_status.values() if v == "running"
