@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -66,7 +67,10 @@ class CanonicalSignalRegistry:
             self._conn.execute("PRAGMA cache_size=-64000")
             self._conn.execute("PRAGMA temp_store=MEMORY")
             self._conn.execute(_CREATE_TABLE_SQL)
-            self._conn.execute("ALTER TABLE canonical_signals ADD COLUMN source TEXT NOT NULL DEFAULT ''") if not self._column_exists("source") else None
+            if not self._column_exists("source"):
+                self._conn.execute(
+                    "ALTER TABLE canonical_signals ADD COLUMN source TEXT NOT NULL DEFAULT ''"
+                )
             for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
                 idx_sql = idx_sql.strip()
                 if idx_sql:

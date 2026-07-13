@@ -159,12 +159,12 @@ class TestRainbowSettings:
         assert s.log_level == "DEBUG"
         assert s.api.port == 9000
 
-    def test_repository_config_disables_evaluation_pending_r7_evidence(self):
+    def test_repository_config_enables_evaluation_for_r7_measurement(self):
         settings = RainbowSettings.from_yaml(Path("rainbow/config.yaml"))
 
-        assert settings.evaluation.enabled is False
+        assert settings.evaluation.enabled is True
         assert settings.evaluation.primary_model == "deepseek-v4-pro"
-        assert settings.evaluation.timeout_seconds == 6.0
+        assert settings.evaluation.timeout_seconds == 30.0
 
     def test_read_only_defaults_to_true(self):
         assert RainbowSettings().read_only is True
