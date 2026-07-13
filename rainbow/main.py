@@ -106,6 +106,7 @@ class RainbowEngine:
 
     def _build_collectors(self) -> None:
         """Collectors basierend auf Settings instanziieren."""
+        from rainbow.collectors.derivatives_collector import DerivativesCollector
         from rainbow.collectors.news_collector import NewsCollector
         from rainbow.collectors.reddit_collector import RedditCollector
         from rainbow.collectors.ta_collector import TACollector
@@ -127,6 +128,12 @@ class RainbowEngine:
                         provider=provider,
                         assets=cfg.assets,
                         timeframes=timeframes,
+                    )
+                elif name == "derivatives":
+                    collector = DerivativesCollector(
+                        assets=cfg.assets,
+                        funding_extreme_threshold=cfg.params.get("funding_extreme_threshold", 0.0005),
+                        oi_spike_multiplier=cfg.params.get("oi_spike_multiplier", 1.5),
                     )
                 elif name == "twitter":
                     bearer_token = self.settings.twitter_bearer_token

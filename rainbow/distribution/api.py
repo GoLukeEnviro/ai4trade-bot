@@ -19,6 +19,8 @@ _engine: Any = None
 _collector_status: dict[str, str] = {}
 _webhook_manager: WebhookManager | None = None
 _canonical_registry: Any = None
+_performance_window: Any = None
+_drift_detector: Any = None
 
 
 class WebhookSubscribeRequest(BaseModel):
@@ -146,10 +148,25 @@ def _register_routes(app: FastAPI) -> None:
             1 for v in _collector_status.values() if v == "running"
         )
 
+        perf = _performance_window
+        drift = _drift_detector
+        derivatives = None
+        if _engine is not None:
+            derivatives = next(
+                (collector for collector in getattr(_engine, "collectors", []) if collector.name == "derivatives"),
+                None,
+            )
+
         return {
             "signals_stored_count": stored_count,
             "collectors_active": active_collectors,
             "collectors_total": len(_collector_status),
+            "win_rate_rolling_50": perf.win_rate if perf else 0.0,
+            "confidence_calibration_error": perf.confidence_calibration_error if perf else 0.0,
+            "drift_alarm_active": drift.alarm_active if drift else False,
+            "performance_sample_size": perf.sample_size if perf else 0,
+            "derivatives_last_run_utc": getattr(derivatives, "last_run_utc", None),
+            "funding_rate_btc_current": getattr(derivatives, "funding_rate_btc_current", None),
         }
 
     # --- Webhook-Endpoints ---

@@ -33,3 +33,10 @@ rainbow/storage/
 !rainbow/storage/
 rainbow/storage/*
 !rainbow/storage/.gitkeep
+# SQLite Live-Datenbanken — niemals versionieren
+*.db
+*.db-wal
+*.db-shm
+signals.db
+signal_outcomes.db
+data/archive/

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS canonical_signals (
     created_at    TEXT NOT NULL,
     asset         TEXT NOT NULL,
     signal_class  TEXT NOT NULL,
+    source        TEXT NOT NULL DEFAULT '',
     updated_at    TEXT NOT NULL DEFAULT ''
 );
 """
@@ -39,6 +41,8 @@ _CREATE_INDEX_SQL = """\
 CREATE INDEX IF NOT EXISTS idx_canonical_signals_asset ON canonical_signals(asset);
 CREATE INDEX IF NOT EXISTS idx_canonical_signals_class ON canonical_signals(signal_class);
 CREATE INDEX IF NOT EXISTS idx_canonical_signals_lifecycle ON canonical_signals(lifecycle);
+CREATE INDEX IF NOT EXISTS idx_signals_asset_time ON canonical_signals(asset, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signals_source ON canonical_signals(source, created_at DESC);
 """
 
 
@@ -59,7 +63,14 @@ class CanonicalSignalRegistry:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         with self._lock:
             self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA synchronous=NORMAL")
+            self._conn.execute("PRAGMA cache_size=-64000")
+            self._conn.execute("PRAGMA temp_store=MEMORY")
             self._conn.execute(_CREATE_TABLE_SQL)
+            if not self._column_exists("source"):
+                self._conn.execute(
+                    "ALTER TABLE canonical_signals ADD COLUMN source TEXT NOT NULL DEFAULT ''"
+                )
             for idx_sql in _CREATE_INDEX_SQL.strip().split(";"):
                 idx_sql = idx_sql.strip()
                 if idx_sql:
@@ -70,6 +81,10 @@ class CanonicalSignalRegistry:
     # Public API
     # ------------------------------------------------------------------
 
+    def _column_exists(self, column: str) -> bool:
+        rows = self._conn.execute("PRAGMA table_info(canonical_signals)").fetchall()
+        return any(row[1] == column for row in rows)
+
     def append(self, envelope: CanonicalSignalEnvelope) -> str:
         """Store a new signal envelope. Returns the signal id."""
         payload = envelope.model_dump(mode="json")
@@ -79,9 +94,17 @@ class CanonicalSignalRegistry:
         with self._lock:
             self._conn.execute(
                 "INSERT INTO canonical_signals "
-                "(id, envelope_json, lifecycle, created_at, asset, signal_class, updated_at) "
-                "VALUES (?, ?, 'emitted', ?, ?, ?, ?)",
-                (envelope.id, envelope_json, str(now), envelope.asset, envelope.signal_class.value, str(now)),
+                "(id, envelope_json, lifecycle, created_at, asset, signal_class, source, updated_at) "
+                "VALUES (?, ?, 'emitted', ?, ?, ?, ?, ?)",
+                (
+                    envelope.id,
+                    envelope_json,
+                    str(now),
+                    envelope.asset,
+                    envelope.signal_class.value,
+                    envelope.source,
+                    str(now),
+                ),
             )
             self._conn.commit()
         return envelope.id
@@ -127,6 +150,47 @@ class CanonicalSignalRegistry:
         with self._lock:
             rows = self._conn.execute(query, params).fetchall()
         return [self._row_to_dict(r) for r in rows]
+
+    def count(self) -> int:
+        """Return the total number of canonical signals in the registry."""
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) FROM canonical_signals").fetchone()
+        return int(row[0]) if row else 0
+
+    def get_signals_in_range(
+        self,
+        asset: str,
+        since: "datetime",
+        until: "datetime",
+    ) -> list[CanonicalSignalEnvelope]:
+        """Return canonical envelopes for an asset within a created_at range."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT envelope_json FROM canonical_signals "
+                "WHERE asset = ? AND created_at >= ? AND created_at <= ? "
+                "ORDER BY created_at ASC",
+                (asset, since.isoformat(), until.isoformat()),
+            ).fetchall()
+        return [CanonicalSignalEnvelope.model_validate_json(row[0]) for row in rows]
+
+    def get_signals_before(self, cutoff: "datetime") -> list[CanonicalSignalEnvelope]:
+        """Return canonical envelopes created before cutoff."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT envelope_json FROM canonical_signals WHERE created_at < ? ORDER BY created_at ASC",
+                (cutoff.isoformat(),),
+            ).fetchall()
+        return [CanonicalSignalEnvelope.model_validate_json(row[0]) for row in rows]
+
+    def delete_signals_before(self, cutoff: "datetime") -> int:
+        """Delete canonical signals created before cutoff and return the row count."""
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM canonical_signals WHERE created_at < ?",
+                (cutoff.isoformat(),),
+            )
+            self._conn.commit()
+            return cur.rowcount
 
     def query_active(
         self,
