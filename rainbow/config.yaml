@@ -24,18 +24,17 @@ scorer:
     news: 0.1
 
 evaluation:
-  enabled: false                    # R7-Gate: erst aktivieren nach R7-Evidenz
-  provider: ollama_cloud
-  base_url_env: RAINBOW_LLM_BASE_URL
-  api_key_env: RAINBOW_LLM_API_KEY
-  primary_model: deepseek-v4-pro
-  fallback_model: deepseek-v4-flash
-  temperature: 0.1
-  summary_temperature: 0.15
-  timeout_seconds: 6.0
-  threshold: 0.55
-  cache_ttl_seconds: 300
-  max_reviews_per_cycle: 10
+  enabled: true
+  provider: "deepseek"
+  model: "deepseek-v4-pro"
+  min_confidence_to_evaluate: 0.60
+  max_tokens: 1024
+  timeout_seconds: 30
+  retry_attempts: 2
+  critic:
+    enabled: false
+    trigger_on_priority: ["high", "critical"]
+    trigger_on_risk_score_above: 0.70
 
 collectors:
   ta:
@@ -58,3 +57,10 @@ collectors:
   # news:
   #   enabled: false
   #   interval_seconds: 300
+  derivatives:
+    enabled: true
+    assets: ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"]
+    interval_seconds: 300
+    params:
+      funding_extreme_threshold: 0.0005
+      oi_spike_multiplier: 1.5

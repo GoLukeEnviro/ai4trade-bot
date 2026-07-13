@@ -37,12 +37,21 @@ class ApiConfig(BaseModel):
     port: int = Field(default=8000, ge=1, le=65535)
 
 
+class EvaluationCriticConfig(BaseModel):
+    enabled: bool = False
+    trigger_on_priority: list[str] = Field(default_factory=lambda: ["high", "critical"])
+    trigger_on_risk_score_above: float = 0.7
+
+
 class EvaluationConfig(BaseModel):
     enabled: bool = False
     model: str = "deepseek-reasoner"
     temperature: float = 0.1
     timeout_seconds: float = 5.0
     threshold: float = 0.5
+    min_confidence_to_evaluate: float = 0.60
+    max_tokens: int = 1024
+    retry_attempts: int = 2
     cache_ttl_seconds: int = 300
 
     # Ollama Cloud / DeepSeek V4 Pro provider fields
@@ -58,6 +67,7 @@ class EvaluationConfig(BaseModel):
     critic_enabled: bool = False
     critic_trigger_min_priority: str = "high"
     critic_trigger_min_risk_score: float = 0.7
+    critic: EvaluationCriticConfig = Field(default_factory=EvaluationCriticConfig)
 
     def get_effective_model(self) -> str:
         """Return primary_model, falling back to the legacy model field."""

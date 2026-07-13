@@ -120,3 +120,7 @@ services:
 
 Stand: 2026-07-11
 
+
+## Database Volumes
+
+SQLite live databases are runtime state and must never be committed to this repository. In Docker deployments, `signals.db`, `signal_outcomes.db`, WAL files, and archive data live in Docker volumes so restarts can preserve state without mixing production data into source control. Keep local database files out of Git and mount the configured database paths as volumes in compose files.
