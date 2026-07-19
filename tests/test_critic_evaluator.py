@@ -17,7 +17,6 @@ from rainbow.evaluation.critic_evaluator import (
 from rainbow.evaluation.models import AIEvaluation
 from rainbow.models.signal import CryptoSignal, Direction, SignalType
 
-
 # ======================================================================
 # Helpers
 # ======================================================================
@@ -461,3 +460,47 @@ class TestCriticSystemPrompt:
 
     def test_prompt_requires_json_only(self):
         assert "valid json only" in CRITIC_SYSTEM_PROMPT.lower()
+
+
+# ======================================================================
+# Issue #K2 — Graceful degradation bei fehlendem DEEPSEEK_API_KEY
+# ======================================================================
+
+
+class TestCriticMissingApiKey:
+    """Bei fehlendem API-Key darf der CriticEvaluator nicht crashen (KeyError).
+
+    Stattdessen: graceful degradation — Konstruktor erzwingt enabled=False,
+    evaluate() liefert CriticVerdict(triggered=False).
+    """
+
+    def test_constructor_disabled_when_key_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        c = CriticEvaluator(enabled=True)
+        # Key fehlt → Konstruktor MUSS deaktivieren, trotz enabled=True
+        assert c.enabled is False
+        assert c._client is None
+
+    def test_constructor_enabled_when_key_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+        c = CriticEvaluator(enabled=True)
+        assert c.enabled is True
+        assert c._client is not None
+
+    def test_constructor_uses_explicit_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        c = CriticEvaluator(enabled=True, api_key="sk-explicit")
+        assert c.enabled is True
+        assert c._client is not None
+
+    @pytest.mark.anyio
+    async def test_evaluate_returns_untriggered_when_disabled(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        c = CriticEvaluator(enabled=True)
+        signal = _make_signal()
+        evaluation = _make_evaluation()
+        verdict = await c.evaluate(signal, evaluation)
+        assert verdict.triggered is False
+        assert verdict.agree_with_primary is True

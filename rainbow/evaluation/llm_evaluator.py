@@ -98,6 +98,28 @@ def _safe_default_evaluation(model_used: str, latency_ms: int) -> AIEvaluation:
     )
 
 
+def _neutral_evaluation(model_used: str) -> AIEvaluation:
+    """Return a neutral fallback evaluation when the LLM client is unavailable.
+
+    Used when DEEPSEEK_API_KEY is missing — graceful degradation instead of crash.
+    Confidence 0.5, empty summary, store_only handling.
+    """
+    return AIEvaluation(
+        ai_confidence=0.5,
+        risk_level="medium",
+        market_regime="quiet",
+        reasoning="LLM client unavailable (missing API key); neutral fallback.",
+        model_used=model_used,
+        evaluation_latency_ms=0,
+        ai_risk_score=0.5,
+        signal_quality="usable",
+        recommended_handling="store_only",
+        contradictions=[],
+        missing_context=[],
+        summary="",
+    )
+
+
 def _parse_llm_json(raw_content: str) -> dict | None:
     """Try to extract a JSON dict from an LLM response string.
 
@@ -205,11 +227,21 @@ class LLMEvaluator(BaseEvaluator):
         self._timeout = timeout_seconds
         self._threshold = threshold
         self._cache = EvaluationCache(ttl_seconds=cache_ttl_seconds)
-        self._client = AsyncOpenAI(
-            api_key=api_key or os.environ["DEEPSEEK_API_KEY"],
-            base_url=base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-            timeout=timeout_seconds,
-        )
+
+        resolved_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        if not resolved_key:
+            logger.warning(
+                "DEEPSEEK_API_KEY nicht gesetzt — LLMEvaluator deaktiviert (graceful degradation)",
+            )
+            self._client = None
+            self._disabled = True
+        else:
+            self._client = AsyncOpenAI(
+                api_key=resolved_key,
+                base_url=base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+                timeout=timeout_seconds,
+            )
+            self._disabled = False
 
     async def _call_model(self, model: str, prompt: str) -> str:
         """Call a specific model and return the raw content string."""
@@ -264,6 +296,13 @@ class LLMEvaluator(BaseEvaluator):
                 signal.asset, rainbow_score, self._threshold,
             )
             return None
+
+        if self._disabled:
+            logger.warning(
+                "LLMEvaluator deaktiviert (DEEPSEEK_API_KEY fehlt) — neutral fallback fuer %s",
+                signal.asset,
+            )
+            return _neutral_evaluation(self._model)
 
         direction_str = signal.direction.value if signal.direction else "neutral"
         cached = await self._cache.get(signal.asset, direction_str)

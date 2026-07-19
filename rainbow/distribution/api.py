@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -11,6 +12,8 @@ from core.heartbeat_writer import read_heartbeat
 from rainbow.distribution import guards
 from rainbow.distribution.webhooks import WebhookManager, WebhookSubscription
 from rainbow.paths import HEARTBEAT_PATH
+
+log = logging.getLogger(__name__)
 
 _start_time: float = 0.0
 _store: Any = None
@@ -269,7 +272,8 @@ def _register_routes(app: FastAPI) -> None:
         for entry in latest:
             try:
                 envelopes.append(CanonicalSignalEnvelope.model_validate(entry))
-            except Exception:
+            except Exception as exc:
+                log.warning("agent_summary: envelope validation failed for %s: %s", asset, exc)
                 continue
 
         if not envelopes:

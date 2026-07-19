@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
 from datetime import datetime
@@ -11,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from core.signals.envelope import CanonicalSignalEnvelope, SignalClass
+
+log = logging.getLogger(__name__)
 
 
 class SignalLifecycle(StrEnum):
@@ -286,7 +289,8 @@ class CanonicalSignalRegistry:
             return None
         try:
             return CanonicalSignalEnvelope.model_validate(rows[0])
-        except Exception:
+        except Exception as exc:
+            log.warning("get_latest_canonical: envelope validation failed for %s: %s", asset, exc)
             return None
 
     def close(self) -> None:

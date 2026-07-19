@@ -133,8 +133,8 @@ class AI4TradeSignalStrategy(IStrategy):
             try:
                 if hasattr(dataframe, "assign"):
                     dataframe["enter_long"] = 0
-            except Exception:
-                pass
+            except Exception as inner_exc:
+                log.warning("populate_entry_trend: fallback reset failed: %s", inner_exc)
 
         return dataframe
 
@@ -160,8 +160,8 @@ class AI4TradeSignalStrategy(IStrategy):
             try:
                 if hasattr(dataframe, "assign"):
                     dataframe["exit_long"] = 0
-            except Exception:
-                pass
+            except Exception as inner_exc:
+                log.warning("populate_exit_trend: fallback reset failed: %s", inner_exc)
 
         return dataframe
 

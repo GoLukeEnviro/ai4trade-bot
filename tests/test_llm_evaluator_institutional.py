@@ -588,3 +588,57 @@ class TestEvaluatorWithNewFields:
         assert result is not None
         assert result.risk_level == "extreme"
         assert result.recommended_action == "hold"
+
+
+# ======================================================================
+# Issue #K2 — Graceful degradation bei fehlendem DEEPSEEK_API_KEY
+# ======================================================================
+
+
+class TestLLMEvaluatorMissingApiKey:
+    """Bei fehlendem API-Key darf der Evaluator nicht crashen (KeyError).
+
+    Stattdessen: graceful degradation — Konstruktor setzt _disabled=True,
+    evaluate() liefert eine neutrale Evaluation mit confidence=0.5.
+    """
+
+    def test_constructor_disabled_when_key_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        evaluator = LLMEvaluator(threshold=0.5)
+        assert evaluator._disabled is True
+        assert evaluator._client is None
+
+    def test_constructor_enabled_when_key_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+        evaluator = LLMEvaluator(threshold=0.5)
+        assert evaluator._disabled is False
+        assert evaluator._client is not None
+
+    def test_constructor_uses_explicit_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        evaluator = LLMEvaluator(api_key="sk-explicit", threshold=0.5)
+        assert evaluator._disabled is False
+        assert evaluator._client is not None
+
+    @pytest.mark.anyio
+    async def test_evaluate_returns_neutral_when_disabled(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        evaluator = LLMEvaluator(threshold=0.5)
+        result = await evaluator.evaluate(_make_signal(rainbow_score=0.8))
+        assert result is not None
+        assert result.ai_confidence == 0.5
+        assert result.ai_risk_score == 0.5
+        assert result.summary == ""
+        assert result.recommended_handling == "store_only"
+
+    @pytest.mark.anyio
+    async def test_evaluate_below_threshold_still_returns_none_when_disabled(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Threshold-Check läuft vor dem Disabled-Check — bestehendes Verhalten bleibt."""
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        evaluator = LLMEvaluator(threshold=0.5)
+        result = await evaluator.evaluate(_make_signal(rainbow_score=0.3))
+        assert result is None

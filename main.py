@@ -106,7 +106,8 @@ def _fetch_sentiment(
         else:
             result = {"score": 0.0, "confidence": 0.0}
         return result, now
-    except Exception:
+    except Exception as exc:
+        log.warning("_fetch_sentiment fehlgeschlagen, verwende Neutral-Score: %s", exc)
         return {"score": 0.0, "confidence": 0.0}, now
 
 

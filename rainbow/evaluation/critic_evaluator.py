@@ -165,11 +165,19 @@ class CriticEvaluator:
             trigger_signal_qualities or TRIGGER_POLICY["signal_quality_triggers"]
         )
 
-        self._client = AsyncOpenAI(
-            api_key=api_key or os.environ["DEEPSEEK_API_KEY"],
-            base_url=base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-            timeout=timeout_seconds,
-        )
+        resolved_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        if not resolved_key:
+            logger.warning(
+                "DEEPSEEK_API_KEY nicht gesetzt — CriticEvaluator deaktiviert (graceful degradation)",
+            )
+            self._enabled = False
+            self._client = None
+        else:
+            self._client = AsyncOpenAI(
+                api_key=resolved_key,
+                base_url=base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+                timeout=timeout_seconds,
+            )
 
     @property
     def enabled(self) -> bool:

@@ -246,15 +246,16 @@ async def _run_collector_loop(
                             CANONICAL_SIGNALS_TOTAL.labels(
                                 **{"class": envelope.signal_class.value, "asset": sig.asset},
                             ).inc()
-                    except Exception:
-                        pass  # side-write must not break the pipeline
+                    except Exception as exc:
+                        log.warning("Canonical side-write failed for %s: %s", sig.asset, exc)
                 if webhooks:
                     for sig in scored:
                         try:
                             await webhooks.dispatch(sig)
                             WEBHOOKS_DISPATCHED.labels(status="success").inc()
-                        except Exception:
+                        except Exception as exc:
                             WEBHOOKS_DISPATCHED.labels(status="failure").inc()
+                            log.warning("Webhook dispatch failed for %s: %s", sig.asset, exc)
                 log.info(
                     "Collector '%s': %d Signal(e) verarbeitet",
                     collector.name,

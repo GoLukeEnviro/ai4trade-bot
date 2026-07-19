@@ -33,8 +33,8 @@ class MarketData:
     def get_ohlcv(self, symbol: str, interval: str = "1h", limit: int = 200) -> pd.DataFrame:
         try:
             return self._exchange.get_ohlcv(symbol, interval, limit)
-        except Exception:
-            log.warning(f"Exchange fehlgeschlagen, Fallback auf CoinGecko fuer {symbol}")
+        except Exception as exc:
+            log.warning("Exchange fehlgeschlagen fuer %s, Fallback auf CoinGecko: %s", symbol, exc)
             return self._coingecko_ohlcv(symbol, limit)
 
     def get_price(self, symbol: str) -> float:
