@@ -386,6 +386,38 @@ collectors:
 
 ## Development Setup
 
+### Environment Variables / Secrets
+
+Rainbow nutzt **`.env` als einzige Config-Quelle** für Secrets (kein YAML, kein config.toml). Alle Secrets werden durch den `SecretProvider` geladen (siehe `core/secret_provider.py`).
+
+**Setup-Schritte:**
+
+```bash
+# 1. .env-Datei aus Template erstellen
+cp .env.example .env
+
+# 2. Required Secrets eintragen
+# AI4TRADE_TOKEN=<dein-token>       # Required: AI4Trade API Access
+# CLAUDE_API_KEY=<dein-key>         # Required (wenn LLM_PROVIDER=claude)
+# LLM_API_KEY=<dein-key>            # Required: Generic LLM API Key
+
+# 3. Optional: AI Evaluation Layer (DeepSeek V4 Pro)
+# DEEPSEEK_API_KEY=<dein-key>       # Optional: Ohne Key wird AI Evaluation graceful deaktiviert
+```
+
+**Required Environment Variables:**
+- `AI4TRADE_TOKEN` — AI4Trade API Access Token
+- `CLAUDE_API_KEY` oder `LLM_API_KEY` — LLM Provider API Key (abhängig von `LLM_PROVIDER`)
+- `SECRET_BACKEND` — Default: `env` (Alternativen: `keyring`, `vault`)
+
+**Optional Variables:**
+- `DEEPSEEK_API_KEY` — Für AI Evaluation Layer (DeepSeek V4 Pro). Ohne Key läuft Rainbow ohne AI Evaluation (graceful degradation).
+- `OLLAMA_BASE_URL` — Für lokale LLM-Instanz (Default: `http://localhost:11434`)
+
+**Wichtig:** Niemals `.env` committen! Die Datei ist in `.gitignore` und enthält Secrets.
+
+### Installation & Setup
+
 ```bash
 # 1. Virtuelle Umgebung
 python -m venv .venv
@@ -440,3 +472,11 @@ Rainbow ist designed fuer Speed. Alle Collectors laufen asynchron, alle APIs sin
 Collectors koennen hot-reloadet, Gewichte zur Laufzeit angepasst, Webhooks dynamisch subscribt werden.
 
 Die Engine wartet nicht. Sie liefert.
+
+---
+
+## License
+
+MIT License — siehe [LICENSE](LICENSE) Datei für Details.
+
+Copyright (c) 2026 GoLukeEnviro

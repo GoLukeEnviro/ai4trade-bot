@@ -98,6 +98,124 @@ collectors:
   my_collector:
     enabled: false
     interval_seconds: 300
+
+---
+
+## Workflow-Konventionen
+
+### Branch-Naming
+
+Branches folgen diesem Schema:
+
+- `feat/<ticket>-<kurzbeschreibung>` — Neue Features (z.B. `feat/99-telegram-collector`)
+- `fix/<ticket>-<kurzbeschreibung>` — Bugfixes (z.B. `fix/42-rate-limiter-crash`)
+- `refactor/<kurzbeschreibung>` — Code-Refactorings (z.B. `refactor/cleanup-ta-module`)
+
+### Commit-Style
+
+**Format:** `<type>: <kurzbeschreibung>`
+
+**Types:**
+- `feat` — Neue Features
+- `fix` — Bugfixes
+- `refactor` — Code-Umstrukturierung ohne Behavior-Änderung
+- `test` — Neue Tests oder Test-Fixes
+- `docs` — Dokumentation
+- `chore` — Build, Dependencies, Config
+- `style` — Formatierung, Linting
+- `perf` — Performance-Optimierung
+
+**Sprache:** Deutsch
+
+**Fokus:** **Warum**, nicht Was. Der Diff zeigt das "Was", der Commit erklärt das "Warum".
+
+**Beispiele:**
+```bash
+feat: telegram collector mit channel-filtering
+fix: rate limiter crash bei ungültigem token
+refactor: ta collector duplikation entfernen
+test: rainbow scorer mit cross-confirmation abdecken
+docs: readme mit secret-setup ergänzen
+```
+
+### Test-Requirements
+
+**Pflicht:**
+- **Neue Features MÜSSEN Tests haben** — mindestens ein Unit-Test pro neuer Funktion/Klasse
+- **Bugfixes MÜSSEN einen Test enthalten der den Bug reproduziert** — bevor der Fix implementiert wird
+- **Vor jedem Commit: relevante Tests ausführen** — nicht blind committen
+
+**Test-Befehl:**
+```bash
+# Alle Tests (Windows)
+& .\.venv\Scripts\python.exe -m pytest tests/ -q
+
+# Spezifischer Test
+pytest rainbow/tests/test_models.py -v
+
+# Mit Coverage
+pytest rainbow/tests/ tests/evaluation/ tests/core/ --cov=rainbow --cov-report=term
+```
+
+**Was NICHT getestet wird:**
+- Triviale Getter/Setter ohne Logik
+- Framework-Interna (FastAPI, SQLite-Interna)
+- UI-Rendering ohne Business-Logik
+
+### Pre-Commit Hooks
+
+**Installation (nach Clone/Pull):**
+```bash
+pre-commit install
+```
+
+**Was macht der Hook:**
+- `ruff check` — Linting (Code-Quality-Checks)
+- `ruff format` — Code-Formatierung
+- `bandit` — Security-Checks (SQL-Injection, Secrets in Code, etc.)
+
+**Bei Hook-Fehlern:**
+- **NIEMALS `--no-verify` verwenden** — Fehler beheben, nicht umgehen
+- Bei Unklarheit: Issue öffnen oder im PR diskutieren
+
+### Pull Request-Prozess
+
+**Vor PR-Erstellung:**
+1. Tests laufen grün lokal
+2. Pre-Commit-Hooks laufen grün
+3. Branch ist auf `main` rebased (keine Merge-Konflikte)
+
+**PR-Anforderungen:**
+- **Titel:** < 70 Zeichen, klar und prägnant
+- **Summary:** 1-3 Bulletpoints mit:
+  - Was wurde geändert (kurz)
+  - Warum (Kontext, Issue-Link)
+  - Verifikation (wie wurde getestet)
+- **Code-Review erforderlich:** Mindestens 1 Approval bevor Merge
+
+**Beispiel-PR-Template:**
+```markdown
+## Änderungen
+- Telegram Collector mit Channel-Filtering implementiert (#99)
+- Rate-Limiter für Telegram Bot API hinzugefügt
+
+## Warum
+Telegram ist eine wichtige Social-Signal-Quelle. Issue #99 forderte Channel-basiertes Filtering.
+
+## Verifikation
+- Unit-Tests: `pytest rainbow/tests/test_telegram_collector.py` (5 Tests, alle grün)
+- Integration-Test: Collector läuft 10 Minuten gegen Testkanal, 47 Signale gesammelt
+- Rate-Limiter verhindert 429-Errors (3 Aufrufe/Sekunde)
+```
+
+---
+
+## Fragen?
+
+Bei Unklarheiten:
+- Issue öffnen mit Label `question`
+- Im PR diskutieren
+- README.md und docs/ durchsuchen
     params:
       assets: [BTC, ETH]
 ```

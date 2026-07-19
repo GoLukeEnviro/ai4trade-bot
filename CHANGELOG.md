@@ -9,6 +9,16 @@ und dieses Projekt hält sich zur semantischen Versionierung an [Semantic Versio
 
 ### Added
 
+### Changed
+
+### Fixed
+
+---
+
+## [0.2.0] - 2026-07-19
+
+### Added
+
 **AI Evaluation Layer**
 - `rainbow/evaluation/` Package mit DeepSeek V4 Pro Integration (6 Dateien)
 - LLMEvaluator: Async LLM-Aufrufe via OpenAI-compatible API (deepseek-reasoner, timeout 5s)

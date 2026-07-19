@@ -8,6 +8,8 @@ services:
     ports:
       - "9090:9090"
     restart: unless-stopped
+    # HTTP healthcheck via /health endpoint
+    # (Dockerfile nutzt zusätzlich Heartbeat-Datei-Ping via core.healthcheck_cmd)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
       interval: 30s
