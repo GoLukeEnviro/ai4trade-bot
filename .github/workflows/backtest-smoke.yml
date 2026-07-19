@@ -9,10 +9,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Run backtest smoke test
         run: python -m pytest backtesting/tests/test_smoke.py -v
       - name: Assert fixture performance is within the smoke-test tolerance
         run: >-
-          python -c "from backtesting.engine import BacktestEngine; from backtesting.data_loader import load_fixture; fixture = load_fixture('backtesting/fixtures/btc_1h_sample.json'); result = BacktestEngine().run(fixture.signals, fixture.price_data); assert result.metrics['sharpe_ratio'] >= -2.0, f'Sharpe too low: {result.metrics}'; print('Backtest smoke test passed')"
+          python -c "from backtesting.engine import BacktestEngine; from backtesting.data_loader import load_fixture; fixture = load_fixture('backtesting/fixtures/btc_1h_sample.json'); result = BacktestEngine().run(fixture.signals, fixture.price_data); assert result.metrics['sharpe_ratio'] >= -2.0, f'Sharpe too low: {result.metrics}'; print('Backtest smoke test passed (Sharpe threshold is intentionally loose - regression smoke only, not a strategy quality gate)')"

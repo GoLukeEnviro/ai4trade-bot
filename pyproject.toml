@@ -2,14 +2,52 @@
 name = "ai4trade-bot"
 version = "0.2.0"
 description = "KI-gestützter Krypto-Signalgenerator für AI4Trade"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+select = ["E", "F", "I", "W", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# B017: `pytest.raises(Exception)` ist ein etablierter Test-Pattern für "irgendein Fehler
+# erwartet". B017 ist eine Policy-Diskussion, kein Bug — 20 Vorkommen in tests/ werden nicht
+# einzeln umgeschrieben (würde Test-Intention verschleiern). Bei Bedarf gezielt pro Test
+# aktivieren, nicht pauschal für alle Tests.
+"tests/**" = ["B017"]
+
+# UP042: `(str, Enum)` -> `StrEnum` ist KEINE reine Modernisierung: StrEnum ändert
+# `str(member)`-Verhalten (liefert value statt "Class.MEMBER") und lower-cast bei `auto()`.
+# Migration benötigt Serialisierungs-/Logging-Audit. Siehe whats-next.md (Tech-Debt-Backlog).
+"*" = ["UP042"]
+
+# === Dateien mit bewussten Style-Entscheidungen ===
+# core/signals/registry.py & rainbow/distribution/api.py: F821-Bugs (undefined `log`)
+# wurden gefixt — Logger korrekt initialisiert. Verbleibende Ignores sind reiner Style.
+"core/signals/registry.py" = ["UP037"]
+"rainbow/distribution/api.py" = ["SIM114", "B904"]
+"rainbow/evaluation/cache.py" = ["UP045"]
+"rainbow/evaluation/critic_evaluator.py" = ["F401", "SIM103", "UP041", "F541"]
+"rainbow/evaluation/llm_evaluator.py" = ["UP041"]
+"rainbow/main.py" = ["UP041"]
+# Root main.py: SIM108 Style-Präferenz, außer Scope (Root-Modul).
+"main.py" = ["SIM108"]
+
+# === Editierbare Dateien mit bewusstem Pattern ===
+# B905: `zip(columns, row)` in DB-Result-Mapping ist bewusst schema-tolerant — bei
+# Schema-Drift (Migration fügt Spalte hinzu/entfernt) würde `strict=True` die Abfrage
+# crashen. Code nutzt `.pop(key, default)` für variable Keys — robustheit > striktheit.
+"core/outcomes/repository.py" = ["B905"]
+"rainbow/processor/store.py" = ["B905"]
+"storage/sqlite_repository.py" = ["B905"]
+# SIM103: Multi-Guard-Pattern (3 sequenzielle Filter mit Early-Return) ist lesbarer
+# als verschachtelte Negation.
+"rainbow/distribution/webhooks.py" = ["SIM103"]
+# SIM105: try/except/pass mit erklärendem Kommentar ist im Test-Kontext klarer als
+# contextlib.suppress (Kommentar-Platzierung).
+"tests/core/test_watchdog_runner.py" = ["SIM105"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
