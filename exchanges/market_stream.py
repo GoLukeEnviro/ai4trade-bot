@@ -36,11 +36,18 @@ class NoOpMarketStream:
 
 
 class BitgetWebSocketStream:
-    """Zukuenftige Bitget WebSocket-Implementierung. Aktuell: Stub.
+    """**STUB — NICHT VERWENDEN.**
 
-    Bitget WebSocket Endpoints:
+    Diese Klasse ist ein Platzhalter für eine geplante WebSocket-Implementierung.
+    Jede Nutzung (Instanziierung, Methodenaufrufe) löst ``NotImplementedError`` aus.
+
+    Geplante Bitget WebSocket Endpoints:
     - wss://ws.bitget.com/v2/ws/public
     - Channels: candles, ticker, depth
+
+    Siehe auch: ``create_market_stream("bitget_ws")`` wirft ebenfalls
+    ``NotImplementedError``. Produktiver Fallback ist ``NoOpMarketStream``
+    (REST-basiert über ``BitgetRestClient``).
     """
 
     def __init__(self):

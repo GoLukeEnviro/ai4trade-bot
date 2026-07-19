@@ -16,7 +16,11 @@ models/predictive/*.txt
 models/*
 !models/predictive/
 !models/predictive/.gitkeep
+
+# SQLite databases (runtime artifacts — niemals versionieren)
 *.db
+*.db-wal
+*.db-shm
 
 # Local session / tooling artifacts (not for commit)
 .omo/drafts/
@@ -28,18 +32,9 @@ pytest_full.txt
 pytest_out.txt
 whats-next.md
 
-# SQLite databases (runtime artifacts)
-*.db
-*.db-wal
-*.db-shm
 rainbow/storage/
 !rainbow/storage/
 rainbow/storage/*
 !rainbow/storage/.gitkeep
-# SQLite Live-Datenbanken — niemals versionieren
-*.db
-*.db-wal
-*.db-shm
-signals.db
-signal_outcomes.db
 data/archive/
+.vscode/
