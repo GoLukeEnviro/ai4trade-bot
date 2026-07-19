@@ -1,5 +1,6 @@
 from rainbow.evaluation.base import BaseEvaluator
+from rainbow.evaluation.critic_evaluator import CriticEvaluator, CriticVerdict
 from rainbow.evaluation.llm_evaluator import LLMEvaluator
 from rainbow.evaluation.models import AIEvaluation
 
-__all__ = ["BaseEvaluator", "AIEvaluation", "LLMEvaluator"]
+__all__ = ["BaseEvaluator", "AIEvaluation", "LLMEvaluator", "CriticEvaluator", "CriticVerdict"]
