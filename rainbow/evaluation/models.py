@@ -19,7 +19,7 @@ class AIEvaluation(BaseModel):
     ] = "store_only"
     contradictions: list[str] = Field(default_factory=list)
     missing_context: list[str] = Field(default_factory=list)
-    summary: str = ""
+    summary: str = Field(default="", max_length=120)
 
     # Institutional-grade fields (Issue #34)
     recommended_action: str | None = None

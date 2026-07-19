@@ -133,28 +133,33 @@ class TestLengthConstraint:
     def test_under_280_chars_with_evaluation(self):
         env = _make_envelope()
         ev = _make_evaluation(
-            summary="A very long summary that might push the total over the 280 character limit "
-                    "for notification compatibility, so we need to ensure truncation works properly.",
+            # summary ist seit Issue #92 auf 120 chars begrenzt; 100 chars sind
+            # lang genug, um die Gesamtlaufzeit mit Quality-Suffix zu testen.
+            summary="A" * 100,
         )
         result = format_signal_summary(env, ev)
         assert len(result) <= 280
 
     def test_under_280_chars_with_long_reasoning(self):
         env = _make_envelope()
-        # reasoning is max_length=300, so use a long summary instead
+        # reasoning hat max_length=300 und fällt als Fallback ins Detail,
+        # wenn summary leer ist — das ist der Pfad, der Truncation erzwingt.
         ev = _make_evaluation(
-            reasoning="short",
-            summary="A" * 400,
+            reasoning="A" * 300,
+            summary="",
         )
         result = format_signal_summary(env, ev)
         assert len(result) <= 280
 
     def test_long_summary_truncated_with_ellipsis(self):
         env = _make_envelope()
-        ev = _make_evaluation(summary="A" * 400)
+        ev = _make_evaluation(
+            reasoning="A" * 300,
+            summary="",
+        )
         result = format_signal_summary(env, ev)
         assert len(result) <= 280
-        # Should end with truncated text
+        # Sollte mit truncated Text enden
         assert result.endswith("…") or len(result) < 280
 
 

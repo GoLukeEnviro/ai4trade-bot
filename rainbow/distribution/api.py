@@ -247,19 +247,52 @@ def _register_routes(app: FastAPI) -> None:
         return combined[:limit]
 
     @app.get("/context/agent-summary")
-    async def agent_summary() -> dict[str, str]:
-        from core.signals.summarizer import format_signal_summary
+    async def agent_summary(
+        asset: str = Query(default="BTC/USDT:USDT"),
+    ) -> dict[str, Any]:
+        """Compact Advisory-Summary der neuesten Signale für ein Asset.
 
+        Liefert ein dict mit ``asset``, ``summary``, ``signals_count``
+        sowie ``latest_priority``/``latest_direction``/``latest_confidence``.
+        advisory-only — ``dry_run_only: True`` und ``can_execute: False`` sind
+        immer gesetzt.
+        """
         if _canonical_registry is None:
             raise HTTPException(status_code=503, detail="Canonical registry not ready")
 
-        latest = _canonical_registry.query_latest(limit=5)
-        lines: list[str] = []
+        from core.signals.envelope import CanonicalSignalEnvelope
+        from core.signals.summarizer import format_signal_summary
+
+        latest = _canonical_registry.query_latest(asset=asset, limit=5)
+
+        envelopes: list[CanonicalSignalEnvelope] = []
         for entry in latest:
-            from core.signals.envelope import CanonicalSignalEnvelope
+            try:
+                envelopes.append(CanonicalSignalEnvelope.model_validate(entry))
+            except Exception:
+                continue
 
-            env = CanonicalSignalEnvelope(**entry)
-            lines.append(format_signal_summary(env))
+        if not envelopes:
+            return {
+                "asset": asset,
+                "summary": "No signals available.",
+                "signals_count": 0,
+                "latest_priority": None,
+                "latest_direction": None,
+                "latest_confidence": None,
+                "dry_run_only": True,
+                "can_execute": False,
+            }
 
-        summary_text = "\n".join(lines) if lines else "No signals available."
-        return {"summary": summary_text}
+        lines = [format_signal_summary(env) for env in envelopes]
+        first = envelopes[0]
+        return {
+            "asset": asset,
+            "summary": "\n".join(lines),
+            "signals_count": len(envelopes),
+            "latest_priority": first.priority.value,
+            "latest_direction": first.direction.value,
+            "latest_confidence": first.confidence,
+            "dry_run_only": True,
+            "can_execute": False,
+        }

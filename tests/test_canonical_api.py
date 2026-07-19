@@ -137,16 +137,66 @@ class TestAgentSummary:
         client: TestClient,
         _setup_registry: CanonicalSignalRegistry,
     ) -> None:
-        _setup_registry.append(_envelope())
+        _setup_registry.append(_envelope(asset="BTC/USDT:USDT"))
 
-        resp = client.get("/context/agent-summary")
+        resp = client.get("/context/agent-summary", params={"asset": "BTC/USDT:USDT"})
         assert resp.status_code == 200
         data = resp.json()
         assert "summary" in data
-        assert "BTC/USDT" in data["summary"]
+        assert "BTC/USDT:USDT" in data["summary"]
 
     def test_no_signals_available(self, client: TestClient) -> None:
         resp = client.get("/context/agent-summary")
         assert resp.status_code == 200
         data = resp.json()
         assert data["summary"] == "No signals available."
+
+    def test_compact_dict_fields(
+        self,
+        client: TestClient,
+        _setup_registry: CanonicalSignalRegistry,
+    ) -> None:
+        from core.signals.envelope import SignalDirection, SignalPriority
+
+        _setup_registry.append(
+            _envelope(
+                asset="BTC/USDT:USDT",
+                priority=SignalPriority.HIGH,
+            )
+        )
+
+        resp = client.get("/context/agent-summary", params={"asset": "BTC/USDT:USDT"})
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["asset"] == "BTC/USDT:USDT"
+        assert data["signals_count"] == 1
+        assert data["latest_priority"] == "high"
+        assert data["latest_direction"] == SignalDirection.BULLISH.value
+        assert data["latest_confidence"] == 0.7
+        assert data["dry_run_only"] is True
+        assert data["can_execute"] is False
+
+    def test_filters_by_asset(
+        self,
+        client: TestClient,
+        _setup_registry: CanonicalSignalRegistry,
+    ) -> None:
+        _setup_registry.append(_envelope(asset="BTC/USDT:USDT"))
+        _setup_registry.append(_envelope(asset="ETH/USDT:USDT"))
+
+        resp = client.get("/context/agent-summary", params={"asset": "ETH/USDT:USDT"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["asset"] == "ETH/USDT:USDT"
+        assert data["signals_count"] == 1
+        assert "ETH/USDT:USDT" in data["summary"]
+
+    def test_empty_when_asset_mismatch(self, client: TestClient) -> None:
+        # Default-Asset ist BTC/USDT:USDT; Envelope hat aber BTC/USDT
+        resp = client.get("/context/agent-summary")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["signals_count"] == 0
+        assert data["summary"] == "No signals available."
+        assert data["latest_priority"] is None

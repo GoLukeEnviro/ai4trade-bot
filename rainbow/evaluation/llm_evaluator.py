@@ -64,7 +64,7 @@ USER_PROMPT_TEMPLATE = (
     '  "recommended_handling": "<store_only|summary|risk_summary|review_required|suppress>",\n'
     '  "contradictions": [<strings>],\n'
     '  "missing_context": [<strings>],\n'
-    '  "summary": "<one-line compact summary>",\n'
+    '  "summary": "<one-line compact summary, max 120 chars>",\n'
     '  "recommended_action": "<hold|reduce_exposure|wait_for_confirmation>" or null,\n'
     '  "suggested_position_size_pct": <float 0-100 or null>,\n'
     '  "suggested_leverage": <float or null>,\n'
@@ -244,7 +244,7 @@ class LLMEvaluator(BaseEvaluator):
             recommended_handling=parsed.get("recommended_handling", "store_only"),
             contradictions=parsed.get("contradictions", []),
             missing_context=parsed.get("missing_context", []),
-            summary=str(parsed.get("summary", "")),
+            summary=str(parsed.get("summary", ""))[:120],
             # Institutional-grade fields (Issue #34)
             recommended_action=_extract_optional_str(parsed, "recommended_action"),
             suggested_position_size_pct=_extract_optional_float(parsed, "suggested_position_size_pct"),
