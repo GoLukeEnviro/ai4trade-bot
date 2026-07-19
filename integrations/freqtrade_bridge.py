@@ -68,13 +68,13 @@ def _risk_level_from_score(risk_score: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Direction mapping
+# Direction mapping: CanonicalSignalEnvelope → Freqtrade action
 # ---------------------------------------------------------------------------
 
 _DIRECTION_MAP: dict[SignalDirection, str] = {
-    SignalDirection.BULLISH: "buy",
-    SignalDirection.BEARISH: "sell",
-    SignalDirection.NEUTRAL: "hold",
+    SignalDirection.BULLISH: "long",
+    SignalDirection.BEARISH: "short",
+    SignalDirection.NEUTRAL: "flat",
 }
 
 
@@ -167,7 +167,9 @@ class FreqtradeBridge:
         Returns
         -------
         dict with keys: action, reason, confidence, risk_score, source, timestamp
-            action is one of "buy", "sell", "hold".
+            action is one of "long", "short", "flat", "hold".
+            "hold" is the safe fallback for errors/policy violations;
+            "flat" is the mapped NEUTRAL direction.
         """
         try:
             return self._get_latest_signal_inner(pair)
@@ -201,24 +203,13 @@ class FreqtradeBridge:
 
         # --- Query registry ---
         try:
-            rows = self._registry.query_latest(asset=pair, limit=1)
+            envelope = self._registry.get_latest_canonical(pair)
         except Exception as exc:
             log.warning("Registry query failed for pair=%s: %s", pair, exc)
             return _hold(f"registry_error:{exc!r}")
 
-        if not rows:
+        if envelope is None:
             return self._cache_and_return(pair, _hold("no_signal"))
-
-        row = rows[0]
-        # query_latest returns dicts from _row_to_dict — already parsed envelope JSON
-        envelope_data = row
-
-        # Parse envelope
-        try:
-            envelope = CanonicalSignalEnvelope(**envelope_data)
-        except Exception as exc:
-            log.warning("Failed to parse envelope for pair=%s: %s", pair, exc)
-            return self._cache_and_return(pair, _hold(f"envelope_parse_error:{exc!r}"))
 
         result = self._evaluate_envelope(pair, envelope)
         return self._cache_and_return(pair, result)

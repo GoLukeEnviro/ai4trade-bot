@@ -114,7 +114,7 @@ class AI4TradeSignalStrategy(IStrategy):
     ) -> Any:
         """Populate entry signals based on advisory bridge output.
 
-        Only marks entries when the bridge returns "buy" with confidence above
+        Only marks entries when the bridge returns "long" with confidence above
         threshold and acceptable risk. Default: no entries (safe).
         """
         metadata = metadata or {}
@@ -124,7 +124,7 @@ class AI4TradeSignalStrategy(IStrategy):
             if hasattr(dataframe, "assign"):
                 pair = metadata.get("pair", "")
                 advisory = self._get_advisory(pair)
-                if advisory and advisory.get("action") == "buy":
+                if advisory and advisory.get("action") == "long":
                     dataframe["enter_long"] = 1
                 else:
                     dataframe["enter_long"] = 0
@@ -143,7 +143,7 @@ class AI4TradeSignalStrategy(IStrategy):
     ) -> Any:
         """Populate exit signals based on advisory bridge output.
 
-        Only marks exits when the bridge returns "sell". Default: no exits (safe).
+        Only marks exits when the bridge returns "short". Default: no exits (safe).
         """
         metadata = metadata or {}
 
@@ -151,7 +151,7 @@ class AI4TradeSignalStrategy(IStrategy):
             if hasattr(dataframe, "assign"):
                 pair = metadata.get("pair", "")
                 advisory = self._get_advisory(pair)
-                if advisory and advisory.get("action") == "sell":
+                if advisory and advisory.get("action") == "short":
                     dataframe["exit_long"] = 1
                 else:
                     dataframe["exit_long"] = 0

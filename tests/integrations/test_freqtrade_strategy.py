@@ -3,8 +3,8 @@
 All tests verify that:
   - Strategy import does not fail without freqtrade installed
   - Strategy defaults to HOLD when no signal is available
-  - Strategy maps "buy" advisory to entry signal
-  - Strategy maps "sell" advisory to exit signal
+  - Strategy maps "long" advisory to entry signal
+  - Strategy maps "short" advisory to exit signal
   - Strategy ignores expired signals
   - No live trading functions are introduced
 """
@@ -118,12 +118,12 @@ class TestStrategyHoldDefault:
 
 
 # ---------------------------------------------------------------------------
-# Test: Strategy maps "buy" advisory to entry signal
+# Test: Strategy maps "long" advisory to entry signal
 # ---------------------------------------------------------------------------
 
 class TestStrategyBuyAdvisory:
-    def test_buy_advisory_maps_to_entry(self):
-        """When bridge returns 'buy', populate_entry_trend should set enter_long=1."""
+    def test_long_advisory_maps_to_entry(self):
+        """When bridge returns 'long', populate_entry_trend should set enter_long=1."""
         from integrations.freqtrade_strategy import AI4TradeSignalStrategy
         strategy = AI4TradeSignalStrategy(config={})
 
@@ -139,20 +139,20 @@ class TestStrategyBuyAdvisory:
         # Override strategy's bridge
         strategy._bridge = bridge
 
-        # Verify bridge returns buy
+        # Verify bridge returns long
         advisory = bridge.get_latest_signal("BTC/USDT")
-        assert advisory["action"] == "buy"
+        assert advisory["action"] == "long"
 
         registry.close()
 
 
 # ---------------------------------------------------------------------------
-# Test: Strategy maps "sell" advisory to exit signal
+# Test: Strategy maps "short" advisory to exit signal
 # ---------------------------------------------------------------------------
 
 class TestStrategySellAdvisory:
-    def test_sell_advisory_maps_to_exit(self):
-        """When bridge returns 'sell', populate_exit_trend should set exit_long=1."""
+    def test_short_advisory_maps_to_exit(self):
+        """When bridge returns 'short', populate_exit_trend should set exit_long=1."""
         from integrations.freqtrade_strategy import AI4TradeSignalStrategy
         strategy = AI4TradeSignalStrategy(config={})
 
@@ -166,7 +166,7 @@ class TestStrategySellAdvisory:
         strategy._bridge = bridge
 
         advisory = bridge.get_latest_signal("BTC/USDT")
-        assert advisory["action"] == "sell"
+        assert advisory["action"] == "short"
 
         registry.close()
 

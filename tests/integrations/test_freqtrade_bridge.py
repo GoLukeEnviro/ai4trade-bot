@@ -76,11 +76,11 @@ def _make_registry_with_signal(envelope: CanonicalSignalEnvelope) -> CanonicalSi
 
 
 # ---------------------------------------------------------------------------
-# Test: Bridge returns "buy" advisory for valid bullish signal
+# Test: Bridge returns "long" advisory for valid bullish signal
 # ---------------------------------------------------------------------------
 
 class TestBridgeBullishSignal:
-    def test_returns_buy_for_bullish_with_high_confidence(self):
+    def test_returns_long_for_bullish_with_high_confidence(self):
         env = _make_envelope(
             direction=SignalDirection.BULLISH,
             confidence=0.85,
@@ -89,11 +89,11 @@ class TestBridgeBullishSignal:
         registry = _make_registry_with_signal(env)
         bridge = FreqtradeBridge(registry)
         result = bridge.get_latest_signal("BTC/USDT")
-        assert result["action"] == "buy"
+        assert result["action"] == "long"
         assert result["confidence"] == 0.85
         registry.close()
 
-    def test_returns_buy_with_minimum_confidence(self):
+    def test_returns_long_with_minimum_confidence(self):
         env = _make_envelope(
             direction=SignalDirection.BULLISH,
             confidence=0.6,
@@ -102,7 +102,7 @@ class TestBridgeBullishSignal:
         registry = _make_registry_with_signal(env)
         bridge = FreqtradeBridge(registry)
         result = bridge.get_latest_signal("BTC/USDT")
-        assert result["action"] == "buy"
+        assert result["action"] == "long"
         registry.close()
 
 
@@ -111,7 +111,7 @@ class TestBridgeBullishSignal:
 # ---------------------------------------------------------------------------
 
 class TestBridgeBearishSignal:
-    def test_returns_sell_for_bearish_with_high_confidence(self):
+    def test_returns_short_for_bearish_with_high_confidence(self):
         env = _make_envelope(
             direction=SignalDirection.BEARISH,
             confidence=0.9,
@@ -120,7 +120,7 @@ class TestBridgeBearishSignal:
         registry = _make_registry_with_signal(env)
         bridge = FreqtradeBridge(registry)
         result = bridge.get_latest_signal("BTC/USDT")
-        assert result["action"] == "sell"
+        assert result["action"] == "short"
         registry.close()
 
 
@@ -193,7 +193,7 @@ class TestBridgeHighRisk:
         assert "high_risk" in result["reason"]
         registry.close()
 
-    def test_returns_buy_when_risk_below_threshold(self):
+    def test_returns_long_when_risk_below_threshold(self):
         env = _make_envelope(
             direction=SignalDirection.BULLISH,
             confidence=0.9,
@@ -202,7 +202,7 @@ class TestBridgeHighRisk:
         registry = _make_registry_with_signal(env)
         bridge = FreqtradeBridge(registry, risk_threshold=0.7)
         result = bridge.get_latest_signal("BTC/USDT")
-        assert result["action"] == "buy"
+        assert result["action"] == "long"
         registry.close()
 
 
@@ -264,8 +264,8 @@ class TestBridgeCaching:
         bridge = FreqtradeBridge(registry, cache_ttl_seconds=60.0, min_interval_seconds=0.0)
         result1 = bridge.get_latest_signal("BTC/USDT")
         result2 = bridge.get_latest_signal("BTC/USDT")
-        assert result1["action"] == "buy"
-        assert result2["action"] == "buy"
+        assert result1["action"] == "long"
+        assert result2["action"] == "long"
         registry.close()
 
 
@@ -286,7 +286,7 @@ class TestBridgeRateLimiting:
         with patch("integrations.freqtrade_bridge.time.monotonic", return_value=1.0):
             result = bridge.get_latest_signal("BTC/USDT")
 
-        assert result["action"] == "buy"
+        assert result["action"] == "long"
         registry.close()
 
     def test_rate_limits_repeated_calls(self):
@@ -301,7 +301,7 @@ class TestBridgeRateLimiting:
             registry, min_interval_seconds=100.0, cache_ttl_seconds=0.01
         )
         result1 = bridge.get_latest_signal("BTC/USDT")
-        assert result1["action"] == "buy"
+        assert result1["action"] == "long"
 
         # Second call within rate limit but cache expired → rate_limited
         time.sleep(0.02)  # Let cache TTL expire
@@ -318,7 +318,7 @@ class TestBridgeRateLimiting:
 class TestBridgeRegistryErrors:
     def test_returns_hold_on_registry_error(self):
         registry = MagicMock(spec=CanonicalSignalRegistry)
-        registry.query_latest.side_effect = RuntimeError("DB connection failed")
+        registry.get_latest_canonical.side_effect = RuntimeError("DB connection failed")
         bridge = FreqtradeBridge(registry, min_interval_seconds=0.0)
         result = bridge.get_latest_signal("BTC/USDT")
         assert result["action"] == "hold"
@@ -392,7 +392,7 @@ class TestBridgeValidUntilExpiry:
         registry = _make_registry_with_signal(env)
         bridge = FreqtradeBridge(registry, min_interval_seconds=0.0)
         result = bridge.get_latest_signal("BTC/USDT")
-        assert result["action"] == "buy"
+        assert result["action"] == "long"
         registry.close()
 
     def test_past_valid_until_returns_hold(self):
@@ -423,7 +423,7 @@ class TestBridgeNoLiveTrading:
             assert attr not in forbidden, f"Forbidden method found: {attr}"
 
     def test_bridge_always_returns_advisory_dict(self):
-        """Bridge output always has 'action' key with buy/sell/hold only."""
+        """Bridge output always has 'action' key with long/short/flat/hold only."""
         import os
         import tempfile
 
@@ -432,7 +432,7 @@ class TestBridgeNoLiveTrading:
         bridge = FreqtradeBridge(registry, min_interval_seconds=0.0)
         result = bridge.get_latest_signal("ANY/PAIR")
         assert "action" in result
-        assert result["action"] in ("buy", "sell", "hold")
+        assert result["action"] in ("long", "short", "flat", "hold")
         assert "reason" in result
         registry.close()
 
@@ -463,18 +463,13 @@ class TestSafetyInvariants:
     def test_bridge_never_raises_on_any_error(self):
         """Bridge.get_latest_signal catches ALL exceptions."""
         registry = MagicMock()
-        # Make query_latest raise a generic exception that isn't caught
-        # by the inner try/except (which only catches during registry access)
-        # We need to make the error occur outside the inner try/except path
-        # to exercise the outer try/except in get_latest_signal.
-        registry.query_latest.side_effect = RuntimeError("catastrophic failure")
+        registry.get_latest_canonical.side_effect = RuntimeError("catastrophic failure")
         bridge = FreqtradeBridge(registry, min_interval_seconds=0.0)
         result = bridge.get_latest_signal("BTC/USDT")
         assert result["action"] == "hold"
-        # Registry error is caught by the inner try/except
         assert "registry_error" in result["reason"]
 
-    def test_neutral_direction_maps_to_hold(self):
+    def test_neutral_direction_maps_to_flat(self):
         env = _make_envelope(
             direction=SignalDirection.NEUTRAL,
             confidence=0.9,
@@ -483,5 +478,5 @@ class TestSafetyInvariants:
         registry = _make_registry_with_signal(env)
         bridge = FreqtradeBridge(registry, min_interval_seconds=0.0)
         result = bridge.get_latest_signal("BTC/USDT")
-        assert result["action"] == "hold"
+        assert result["action"] == "flat"
         registry.close()

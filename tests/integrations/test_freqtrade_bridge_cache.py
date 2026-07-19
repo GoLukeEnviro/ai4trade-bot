@@ -107,7 +107,7 @@ class TestCacheLoadsFromFile:
             cache_file = os.path.join(tmpdir, "cache.json")
             cached_data = {
                 "BTC/USDT": {
-                    "result": {"action": "buy", "reason": "loaded"},
+                    "result": {"action": "long", "reason": "loaded"},
                     "time": 1000.0,
                 },
             }
@@ -123,7 +123,7 @@ class TestCacheLoadsFromFile:
                 min_interval_seconds=0.0,
             )
             assert "BTC/USDT" in bridge._cache
-            assert bridge._cache["BTC/USDT"]["result"]["action"] == "buy"
+            assert bridge._cache["BTC/USDT"]["result"]["action"] == "long"
 
 
 class TestCorruptedFileHandled:

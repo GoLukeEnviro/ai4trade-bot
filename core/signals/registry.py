@@ -275,6 +275,20 @@ class CanonicalSignalRegistry:
         with self._lock:
             self._conn.execute("VACUUM")
 
+    def get_latest_canonical(self, asset: str) -> CanonicalSignalEnvelope | None:
+        """Return the most recent CanonicalSignalEnvelope for *asset*, or None.
+
+        This is the preferred read path for consumers that need a fully
+        validated envelope object (e.g. FreqtradeBridge).
+        """
+        rows = self.query_latest(asset=asset, limit=1)
+        if not rows:
+            return None
+        try:
+            return CanonicalSignalEnvelope.model_validate(rows[0])
+        except Exception:
+            return None
+
     def close(self) -> None:
         with self._lock:
             self._conn.close()

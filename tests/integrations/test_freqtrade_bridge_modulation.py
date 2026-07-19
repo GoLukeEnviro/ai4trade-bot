@@ -164,8 +164,8 @@ class TestModulationBlockedForcesHold:
 # ---------------------------------------------------------------------------
 
 class TestHoldRemainsHoldAfterModulation:
-    def test_hold_remains_hold_after_modulation(self):
-        """NEUTRAL direction → 'hold' action stays 'hold' even with modulation."""
+    def test_neutral_maps_to_flat_after_modulation(self):
+        """NEUTRAL direction → 'flat' action stays 'flat' even with modulation."""
         env = _make_envelope(
             direction=SignalDirection.NEUTRAL,
             confidence=0.85,
@@ -174,9 +174,8 @@ class TestHoldRemainsHoldAfterModulation:
         bridge, registry = _make_bridge_with_registry(env, risk_threshold=1.0)
         try:
             result = bridge.get_latest_signal("BTC/USDT")
-            assert result["action"] == "hold"
-            # Even with modulation, a HOLD stays HOLD
-            # (This is the "HOLD stays HOLD" safety invariant)
+            assert result["action"] == "flat"
+            # NEUTRAL maps to 'flat' — distinct from error-fallback 'hold'
         finally:
             registry.close()
 
@@ -187,7 +186,7 @@ class TestHoldRemainsHoldAfterModulation:
 
 class TestBuyStaysBuyWithLowRisk:
     def test_buy_stays_buy_with_low_risk(self):
-        """Low risk + high confidence → BUY preserved after modulation."""
+        """Low risk + high confidence → LONG preserved after modulation."""
         env = _make_envelope(
             direction=SignalDirection.BULLISH,
             confidence=0.85,
@@ -196,7 +195,7 @@ class TestBuyStaysBuyWithLowRisk:
         bridge, registry = _make_bridge_with_registry(env, risk_threshold=1.0)
         try:
             result = bridge.get_latest_signal("BTC/USDT")
-            assert result["action"] == "buy"
+            assert result["action"] == "long"
             # With low risk, confidence should be preserved
             assert result["confidence"] == pytest.approx(0.85, abs=0.01)
         finally:
@@ -204,12 +203,12 @@ class TestBuyStaysBuyWithLowRisk:
 
 
 # ---------------------------------------------------------------------------
-# Test: SELL stays SELL with low risk
+# Test: SHORT stays SHORT with low risk
 # ---------------------------------------------------------------------------
 
 class TestSellStaysSellWithLowRisk:
-    def test_sell_stays_sell_with_low_risk(self):
-        """Low risk + high confidence → SELL preserved after modulation."""
+    def test_short_stays_short_with_low_risk(self):
+        """Low risk + high confidence → SHORT preserved after modulation."""
         env = _make_envelope(
             direction=SignalDirection.BEARISH,
             confidence=0.9,
@@ -218,7 +217,7 @@ class TestSellStaysSellWithLowRisk:
         bridge, registry = _make_bridge_with_registry(env, risk_threshold=1.0)
         try:
             result = bridge.get_latest_signal("BTC/USDT")
-            assert result["action"] == "sell"
+            assert result["action"] == "short"
             assert result["confidence"] == pytest.approx(0.9, abs=0.01)
         finally:
             registry.close()
@@ -244,7 +243,7 @@ class TestFallbackOnModulatorError:
             ):
                 result = bridge.get_latest_signal("BTC/USDT")
             # Should fall back to raw confidence
-            assert result["action"] == "buy"
+            assert result["action"] == "long"
             assert result["confidence"] == 0.85
         finally:
             registry.close()
@@ -270,7 +269,7 @@ class TestModulationDisabledUsesRaw:
         try:
             result = bridge.get_latest_signal("BTC/USDT")
             # Without modulation, confidence should be raw
-            assert result["action"] == "buy"
+            assert result["action"] == "long"
             assert result["confidence"] == 0.85
             # No modulation metadata should be present
             assert "raw_confidence" not in result
