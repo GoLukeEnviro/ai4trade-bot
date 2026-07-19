@@ -389,8 +389,8 @@ class TestNoNetworkCalls:
             ENABLED = True
 
         fetcher = EnabledFetcher()
-        with patch("urllib.request.urlopen", side_effect=AssertionError("HTTP call detected!")):
-            with patch("requests.get", side_effect=AssertionError("HTTP call detected!")):
+        with patch("urllib.request.urlopen", side_effect=AssertionError("HTTP call detected!")), \
+             patch("requests.get", side_effect=AssertionError("HTTP call detected!")):
                 result = _run(fetcher.get_funding_rate("BTC/USDT"))
                 # Should succeed with stub data, no HTTP calls
                 assert result is not None
@@ -402,8 +402,8 @@ class TestNoNetworkCalls:
             ENABLED = True
 
         fetcher = EnabledFetcher()
-        with patch("urllib.request.urlopen", side_effect=AssertionError("HTTP call detected!")):
-            with patch("requests.get", side_effect=AssertionError("HTTP call detected!")):
+        with patch("urllib.request.urlopen", side_effect=AssertionError("HTTP call detected!")), \
+             patch("requests.get", side_effect=AssertionError("HTTP call detected!")):
                 result = _run(fetcher.get_open_interest("BTC/USDT"))
                 assert result is not None
                 assert result.value == 1_000_000.0
@@ -415,7 +415,7 @@ class TestNoNetworkCalls:
 
         fetcher = EnabledFetcher()
         adapter = DerivativesAdapter(fetcher)
-        with patch("urllib.request.urlopen", side_effect=AssertionError("HTTP call detected!")):
-            with patch("requests.get", side_effect=AssertionError("HTTP call detected!")):
+        with patch("urllib.request.urlopen", side_effect=AssertionError("HTTP call detected!")), \
+             patch("requests.get", side_effect=AssertionError("HTTP call detected!")):
                 result = _run(adapter.fetch_and_summarize("BTC/USDT"))
                 assert result is not None

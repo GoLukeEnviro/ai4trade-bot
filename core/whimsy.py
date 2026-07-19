@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 LEVEL_EMOJI = {
     "DEBUG": "🔍",
@@ -16,6 +16,8 @@ DEFAULT_TEXT_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 
 
 def print_whimsy_banner(title: str, tagline: str | None = None) -> None:
+    # print() ist hier legitim: Banner wird VOR dem logging.basicConfig-Aufruf gedruckt
+    # (zu einem Zeitpunkt, zu dem noch kein konfigurierter Logger existiert).
     lines = [
         "🌈=================================🌈",
         f"  {title}",
@@ -40,7 +42,7 @@ class TextWhimsyFormatter(logging.Formatter):
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

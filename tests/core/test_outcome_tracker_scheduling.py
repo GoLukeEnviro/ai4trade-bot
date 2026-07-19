@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import signal
 import threading
 import time
@@ -91,24 +90,39 @@ def test_heartbeat_written_each_cycle(tmp_path):
 
 
 def test_graceful_shutdown_on_signal(tmp_path):
-    """Daemon should exit cleanly when SIGINT is received."""
+    """Daemon should exit cleanly when SIGINT handler is invoked.
+
+    Note: We capture and invoke the signal handler directly instead of using
+    ``os.kill`` from a background thread, because POSIX signal delivery from
+    non-main threads is unreliable on Windows.
+    """
     fake_time = FakeTime()
     heartbeat_file = tmp_path / "outcome_tracker.heartbeat"
     run_count = 0
+    captured_handlers: dict = {}
+
+    original_signal = signal.signal
+
+    def capture_signal(sig, handler):
+        captured_handlers[sig] = handler
+        return original_signal(sig, handler)
 
     def mock_run(**kwargs):
         nonlocal run_count
         run_count += 1
         return {"evaluated": 0, "skipped": 0, "errors": 0}
 
-    def trigger_sigint():
+    def trigger_shutdown():
         time.sleep(0.05)
-        os.kill(os.getpid(), signal.SIGINT)
+        handler = captured_handlers.get(signal.SIGINT)
+        if handler is not None:
+            handler(signal.SIGINT, None)
 
-    shutdown_thread = threading.Thread(target=trigger_sigint, daemon=True)
+    shutdown_thread = threading.Thread(target=trigger_shutdown, daemon=True)
     shutdown_thread.start()
 
-    with patch("core.outcome_tracker.run", side_effect=mock_run):
+    with patch("core.outcome_tracker.run", side_effect=mock_run), \
+         patch("signal.signal", side_effect=capture_signal):
         run_daemon(
             interval=60,
             heartbeat_path=str(heartbeat_file),

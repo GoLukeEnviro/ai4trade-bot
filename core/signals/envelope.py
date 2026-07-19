@@ -56,7 +56,7 @@ class Actionability(BaseModel):
     dry_run_only: bool = True
 
     @model_validator(mode="after")
-    def _enforce_safety(self) -> "Actionability":
+    def _enforce_safety(self) -> Actionability:
         # can_execute must ALWAYS be False — live execution not yet supported
         object.__setattr__(self, "can_execute", False)
         # dry_run_only must ALWAYS be True

@@ -1,5 +1,6 @@
 """Tests for core.predictive — PredictiveEngine."""
 
+import pathlib
 from unittest.mock import patch
 
 import pandas as pd
@@ -52,4 +53,4 @@ class TestPredictiveEngineModelDir:
     def test_model_dir_default(self) -> None:
         from core.predictive import MODEL_DIR
 
-        assert str(MODEL_DIR) == "models/predictive"
+        assert pathlib.Path("models/predictive") == MODEL_DIR

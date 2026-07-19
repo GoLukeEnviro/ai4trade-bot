@@ -8,7 +8,7 @@ def make_ohlcv(n=200, base_price=50000.0, trend="up") -> pd.DataFrame:
     random.seed(42)
     data = []
     price = base_price
-    for i in range(n):
+    for _ in range(n):
         change = random.uniform(-0.02, 0.02)
         if trend == "up":
             change += 0.001

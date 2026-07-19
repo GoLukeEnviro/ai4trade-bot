@@ -47,7 +47,7 @@ class SignalOutcome(BaseModel):
     model_config = {"populate_by_name": True}
 
     @model_validator(mode="after")
-    def _enforce_safety(self) -> "SignalOutcome":
+    def _enforce_safety(self) -> SignalOutcome:
         """Outcome tracking is observational — never triggers execution."""
         return self
 

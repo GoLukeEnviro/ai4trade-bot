@@ -193,14 +193,11 @@ class TestDBMaintenanceCLI:
         reg.close()
         repo.close()
 
-        with patch.dict(
-            "os.environ",
-            {},
-        ):
-            # Patch default paths to point at temp DBs
-            with patch("core.db_maintenance._DEFAULT_REGISTRY_DB", str(reg_db)), \
-                 patch("core.db_maintenance._DEFAULT_OUTCOMES_DB", str(out_db)):
-                rc = db_main(["--all"])
+        # Patch default paths to point at temp DBs
+        with patch.dict("os.environ", {}), \
+             patch("core.db_maintenance._DEFAULT_REGISTRY_DB", str(reg_db)), \
+             patch("core.db_maintenance._DEFAULT_OUTCOMES_DB", str(out_db)):
+            rc = db_main(["--all"])
         assert rc == 0
 
     def test_cli_exits_0_on_success(self, tmp_path):

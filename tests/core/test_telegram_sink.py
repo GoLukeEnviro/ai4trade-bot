@@ -77,7 +77,7 @@ class TestTelegramSinkSend:
             call_args = mock_post.call_args
             assert "tok123" in call_args[0][0]
             assert call_args[1]["json"]["chat_id"] == "chat456"
-            assert "HTML" == call_args[1]["json"]["parse_mode"]
+            assert call_args[1]["json"]["parse_mode"] == "HTML"
 
         assert sink.stats["sent"] == 1
 

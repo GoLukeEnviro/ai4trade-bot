@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Union
 
 from pydantic import BaseModel, Field
 
@@ -118,7 +117,7 @@ class ConfidenceModulator:
 
     def modulate(
         self,
-        evaluation: Union[AIEvaluation, dict],
+        evaluation: AIEvaluation | dict,
     ) -> ModulatedConfidence:
         """Modulate the confidence of an AIEvaluation.
 
@@ -147,7 +146,7 @@ class ConfidenceModulator:
 
     def _modulate_inner(
         self,
-        evaluation: Union[AIEvaluation, dict],
+        evaluation: AIEvaluation | dict,
     ) -> ModulatedConfidence:
         raw_confidence = self._extract_raw_confidence(evaluation)
         risk_level = self._extract_risk_level(evaluation)
@@ -232,10 +231,7 @@ class ConfidenceModulator:
         # risk_modifier < 1.0 means risk cap reduced confidence
         if raw_confidence is not None and raw_confidence > 0.0:
             # How much was lost due to risk cap specifically?
-            if raw_confidence > risk_cap:
-                risk_modifier = risk_cap / raw_confidence
-            else:
-                risk_modifier = 1.0
+            risk_modifier = risk_cap / raw_confidence if raw_confidence > risk_cap else 1.0
         else:
             # If raw_confidence was None, risk_modifier reflects cap vs default
             risk_modifier = risk_cap / _DEFAULT_CONFIDENCE if _DEFAULT_CONFIDENCE > 0 else 0.0
@@ -266,7 +262,7 @@ class ConfidenceModulator:
 
     @staticmethod
     def _extract_raw_confidence(
-        evaluation: Union[AIEvaluation, dict],
+        evaluation: AIEvaluation | dict,
     ) -> float | None:
         """Safely extract raw_confidence from evaluation."""
         try:
@@ -290,7 +286,7 @@ class ConfidenceModulator:
 
     @staticmethod
     def _extract_risk_level(
-        evaluation: Union[AIEvaluation, dict],
+        evaluation: AIEvaluation | dict,
     ) -> str:
         """Safely extract risk_level, defaulting to 'high'."""
         try:
@@ -308,7 +304,7 @@ class ConfidenceModulator:
 
     @staticmethod
     def _extract_warnings(
-        evaluation: Union[AIEvaluation, dict],
+        evaluation: AIEvaluation | dict,
     ) -> list[str]:
         """Safely extract warnings list, defaulting to empty."""
         try:
@@ -325,7 +321,7 @@ class ConfidenceModulator:
 
     @staticmethod
     def _extract_data_completeness(
-        evaluation: Union[AIEvaluation, dict],
+        evaluation: AIEvaluation | dict,
     ) -> float | None:
         """Safely extract data_completeness_score, defaulting to None."""
         try:

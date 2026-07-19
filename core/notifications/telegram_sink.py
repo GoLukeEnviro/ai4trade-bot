@@ -7,7 +7,7 @@ Graceful degradation: if bot token not configured, silently skips.
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html import escape
 from typing import Any
 
@@ -126,7 +126,7 @@ class TelegramSink:
             lines.append("<b>Details:</b>")
             lines.extend(detail_lines)
 
-        ts = datetime.fromtimestamp(alert.timestamp, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        ts = datetime.fromtimestamp(alert.timestamp, tz=UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         lines.append(f"<b>Time:</b> {ts}")
 
         return "\n".join(lines)

@@ -19,7 +19,7 @@ def test_event_is_frozen():
     evt = Event(event_type=EventType.STRATEGY, payload={})
     try:
         evt.event_type = EventType.RISK
-        assert False, "Event sollte immutable sein"
+        raise AssertionError("Event sollte immutable sein")
     except AttributeError:
         pass
 

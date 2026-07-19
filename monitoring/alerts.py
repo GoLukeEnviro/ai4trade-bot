@@ -10,7 +10,6 @@ import httpx
 
 from core.signals.envelope import CanonicalSignalEnvelope, SignalPriority
 
-
 # Emoji-Mapping für unterstützte Signal-Prioritäten.
 _PRIORITY_EMOJI: dict[SignalPriority, str] = {
     SignalPriority.CRITICAL: "🔴",

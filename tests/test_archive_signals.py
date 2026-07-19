@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -69,9 +69,9 @@ class TestArchiveOldSignals:
         self, registry: CanonicalSignalRegistry, tmp_path: Path
     ) -> None:
         """10 alte Signale → alle archiviert, 0 verbleiben in DB."""
-        old_cutoff = datetime.now(timezone.utc) - timedelta(days=60)
-        for i in range(10):
-            env = _make_envelope(asset=f"BTC/USDT", created_at=old_cutoff)
+        old_cutoff = datetime.now(UTC) - timedelta(days=60)
+        for _ in range(10):
+            env = _make_envelope(asset="BTC/USDT", created_at=old_cutoff)
             registry.append(env)
 
         assert registry.count() == 10
@@ -106,8 +106,8 @@ class TestArchiveOldSignals:
 
     def test_dry_run_does_not_delete(self, registry: CanonicalSignalRegistry, tmp_path: Path) -> None:
         """Dry-Run archiviert JSON, löscht aber nicht aus DB."""
-        old_cutoff = datetime.now(timezone.utc) - timedelta(days=60)
-        for i in range(5):
+        old_cutoff = datetime.now(UTC) - timedelta(days=60)
+        for _ in range(5):
             env = _make_envelope(asset="ETH/USDT", created_at=old_cutoff)
             registry.append(env)
 
@@ -127,12 +127,12 @@ class TestArchiveOldSignals:
 
     def test_recent_signals_not_archived(self, registry: CanonicalSignalRegistry, tmp_path: Path) -> None:
         """Nur alte Signale werden archiviert, neue bleiben."""
-        old = datetime.now(timezone.utc) - timedelta(days=60)
-        recent = datetime.now(timezone.utc) - timedelta(days=5)
+        old = datetime.now(UTC) - timedelta(days=60)
+        recent = datetime.now(UTC) - timedelta(days=5)
 
-        for i in range(3):
+        for _ in range(3):
             registry.append(_make_envelope(asset="OLD", created_at=old))
-        for i in range(2):
+        for _ in range(2):
             registry.append(_make_envelope(asset="RECENT", created_at=recent))
 
         assert registry.count() == 5
@@ -145,7 +145,7 @@ class TestArchiveOldSignals:
 
     def test_archive_json_contains_full_envelope(self, registry: CanonicalSignalRegistry, tmp_path: Path) -> None:
         """Archiv-JSON enthält vollständige CanonicalSignalEnvelope-Daten."""
-        old_cutoff = datetime.now(timezone.utc) - timedelta(days=60)
+        old_cutoff = datetime.now(UTC) - timedelta(days=60)
         env = _make_envelope(asset="SOL/USDT", created_at=old_cutoff)
         registry.append(env)
 
@@ -163,9 +163,9 @@ class TestArchiveOldSignals:
 
     def test_custom_days_parameter(self, registry: CanonicalSignalRegistry, tmp_path: Path) -> None:
         """--days 7 archiviert nur Signale älter als 7 Tage."""
-        very_old = datetime.now(timezone.utc) - timedelta(days=60)
-        medium = datetime.now(timezone.utc) - timedelta(days=14)
-        recent = datetime.now(timezone.utc) - timedelta(days=3)
+        very_old = datetime.now(UTC) - timedelta(days=60)
+        medium = datetime.now(UTC) - timedelta(days=14)
+        recent = datetime.now(UTC) - timedelta(days=3)
 
         registry.append(_make_envelope(asset="V_OLD", created_at=very_old))
         registry.append(_make_envelope(asset="MEDIUM", created_at=medium))

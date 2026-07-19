@@ -53,7 +53,7 @@ class DeliveryConfig:
     heartbeat_enabled: bool = False
 
     @classmethod
-    def from_environment(cls) -> "DeliveryConfig":
+    def from_environment(cls) -> DeliveryConfig:
         raw_routes = os.getenv("AI4TRADE_DELIVERY_ASSET_ROUTES", "{}")
         parsed_routes = json.loads(raw_routes)
         if not isinstance(parsed_routes, dict):

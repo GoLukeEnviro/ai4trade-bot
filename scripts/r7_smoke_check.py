@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -62,7 +62,7 @@ def _parse_utc_timestamp(value: Any) -> datetime:
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
         raise ValueError("created_at must include a timezone")
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def _validate_base_url(value: str) -> str:
@@ -87,7 +87,7 @@ def validate_snapshot(
     """Validate the read-only R7 contract returned by one endpoint cycle."""
     errors: list[str] = []
     warnings: list[str] = []
-    checked_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    checked_at = (now or datetime.now(UTC)).astimezone(UTC)
 
     if health.get("status") != "healthy":
         errors.append(f"health status is {health.get('status')!r}, expected 'healthy'")

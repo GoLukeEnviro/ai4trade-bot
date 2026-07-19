@@ -88,9 +88,8 @@ class TestCoinGeckoGetPrice:
 
     async def test_get_price_missing_data_raises(self) -> None:
         client = CoinGeckoClient()
-        with patch.object(client, "_request", return_value={}):
-            with pytest.raises(ProviderError, match="Keine Preisdaten"):
-                await client.get_price("BTC")
+        with patch.object(client, "_request", return_value={}), pytest.raises(ProviderError, match="Keine Preisdaten"):
+            await client.get_price("BTC")
 
 
 class TestCoinGeckoGetOhlcv:
@@ -115,6 +114,5 @@ class TestCoinGeckoRequest:
         mock_client.get.side_effect = httpx.TimeoutException("timeout")
         client._client = mock_client
 
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            with pytest.raises(ProviderError, match="gescheitert"):
-                await client._request("/test", max_retries=2)
+        with patch("asyncio.sleep", new_callable=AsyncMock), pytest.raises(ProviderError, match="gescheitert"):
+            await client._request("/test", max_retries=2)

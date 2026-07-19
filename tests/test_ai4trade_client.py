@@ -44,7 +44,7 @@ def test_token_expiry_raises_connection_error():
     c = AI4TradeClient(token="expired-token")
     try:
         c.get_me()
-        assert False, "sollte Exception werfen"
+        raise AssertionError("sollte Exception werfen")
     except ConnectionError as e:
         assert "401" in str(e)
 

@@ -138,21 +138,21 @@ class TestRunWatchdog:
         cfg["components"][0]["heartbeat_path"] = "/tmp/nonexistent_heartbeat_test.json"
         cfg["components"][1]["heartbeat_path"] = "/tmp/nonexistent_heartbeat_test2.json"
 
-        with patch("core.watchdog_runner._build_sinks", return_value=[MagicMock()]):
-            with patch("core.watchdog_runner._build_components", wraps=_build_components) as mock_build:
-                run_watchdog(cfg, once=True)
-                mock_build.assert_called_once()
+        with patch("core.watchdog_runner._build_sinks", return_value=[MagicMock()]), \
+             patch("core.watchdog_runner._build_components", wraps=_build_components) as mock_build:
+            run_watchdog(cfg, once=True)
+            mock_build.assert_called_once()
 
     def test_shutdown_on_signal(self):
         """Watchdog stops on SIGTERM."""
         cfg = _default_config()
-        with patch("core.watchdog_runner._build_sinks", return_value=[MagicMock()]):
-            # Simulate immediate shutdown
-            with patch("time.sleep", side_effect=KeyboardInterrupt):
-                try:
-                    run_watchdog(cfg, interval=1)
-                except KeyboardInterrupt:
-                    pass  # Expected, runner should handle SIGINT internally
+        # Simulate immediate shutdown
+        with patch("core.watchdog_runner._build_sinks", return_value=[MagicMock()]), \
+             patch("time.sleep", side_effect=KeyboardInterrupt):
+            try:
+                run_watchdog(cfg, interval=1)
+            except KeyboardInterrupt:
+                pass  # Expected, runner should handle SIGINT internally
 
     def test_no_components_exits(self):
         """Exit code 1 when no components configured."""

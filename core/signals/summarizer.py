@@ -30,10 +30,7 @@ def format_signal_summary(
     if evaluation is not None:
         reason = evaluation.summary or evaluation.reasoning
         quality = evaluation.signal_quality
-        if reason:
-            detail = f" Reason: {reason}. Quality: {quality}."
-        else:
-            detail = f" Quality: {quality}."
+        detail = f" Reason: {reason}. Quality: {quality}." if reason else f" Quality: {quality}."
 
     base = f"[{asset}] {sig_class} {direction} (conf: {conf:.2f}, risk: {risk:.2f})"
 

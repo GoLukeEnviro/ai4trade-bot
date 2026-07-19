@@ -174,7 +174,7 @@ class TestSendHttpSuccess:
         mock_client.__aexit__ = AsyncMock(return_value=None)
         mock_client.post = AsyncMock(return_value=mock_resp)
 
-        with patch("monitoring.alerts.httpx.AsyncClient", return_value=mock_client) as mock_cls:
+        with patch("monitoring.alerts.httpx.AsyncClient", return_value=mock_client):
             sent = await alert.send(_envelope(asset="BTC/USDT:USDT"), "test summary", now=42.0)
 
         assert sent is True

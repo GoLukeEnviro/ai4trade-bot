@@ -166,10 +166,7 @@ def load_data(path: str) -> pd.DataFrame:
     if p.suffix == ".parquet":
         df = pd.read_parquet(path)
     elif p.suffix in (".csv", ".feather"):
-        if p.suffix == ".feather":
-            df = pd.read_feather(path)
-        else:
-            df = pd.read_csv(path)
+        df = pd.read_feather(path) if p.suffix == ".feather" else pd.read_csv(path)
     else:
         raise ValueError(f"Unsupported file format: {p.suffix}. Use .csv, .feather, or .parquet")
 

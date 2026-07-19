@@ -228,7 +228,7 @@ async def test_fallback_model_on_timeout() -> None:
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            raise asyncio.TimeoutError()
+            raise TimeoutError()
         # Second call (fallback) succeeds
         msg = MagicMock()
         msg.content = json.dumps({

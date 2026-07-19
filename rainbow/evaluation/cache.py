@@ -24,7 +24,7 @@ class EvaluationCache:
             if key not in self._store:
                 return None
             evaluation, stored_at = self._store[key]
-            if time.monotonic() - stored_at > self._ttl:
+            if time.monotonic() - stored_at >= self._ttl:
                 del self._store[key]
                 return None
             self._store.move_to_end(key)

@@ -8,7 +8,7 @@ Verifies:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from core.outcomes.price_provider import StaticPriceProvider
 
@@ -18,7 +18,7 @@ class TestStaticPriceProviderStub:
 
     def test_get_price_returns_default_zero(self):
         provider = StaticPriceProvider()
-        result = provider.get_price("BTC/USDT", datetime.now(timezone.utc))
+        result = provider.get_price("BTC/USDT", datetime.now(UTC))
         assert result == 0.0
 
     def test_is_stub_returns_true(self):
@@ -33,7 +33,7 @@ class TestStaticPriceProviderStub:
         StaticPriceProvider._warned = False
         provider = StaticPriceProvider()
         with caplog.at_level(logging.WARNING, logger="core.outcomes.price_provider"):
-            provider.get_price("ETH/USDT", datetime.now(timezone.utc))
+            provider.get_price("ETH/USDT", datetime.now(UTC))
         assert "StaticPriceProvider is a stub" in caplog.text
         # Reset for other tests
         StaticPriceProvider._warned = False
@@ -42,8 +42,8 @@ class TestStaticPriceProviderStub:
         StaticPriceProvider._warned = False
         provider = StaticPriceProvider()
         with caplog.at_level(logging.WARNING, logger="core.outcomes.price_provider"):
-            provider.get_price("ETH/USDT", datetime.now(timezone.utc))
-            provider.get_price("BTC/USDT", datetime.now(timezone.utc))
+            provider.get_price("ETH/USDT", datetime.now(UTC))
+            provider.get_price("BTC/USDT", datetime.now(UTC))
         # Only one warning across two calls
         warning_count = sum(
             1 for r in caplog.records if "StaticPriceProvider is a stub" in r.message

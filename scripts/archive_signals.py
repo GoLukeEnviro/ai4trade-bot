@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from core.signals.envelope import CanonicalSignalEnvelope
@@ -46,7 +46,7 @@ def archive_old_signals(
     tuple[int, Path | None]
         (Anzahl archivierter Signale, Pfad zur Archivdatei oder None)
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     old_signals: list[CanonicalSignalEnvelope] = registry.get_signals_before(cutoff)
 
     if not old_signals:
@@ -56,7 +56,7 @@ def archive_old_signals(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
     archive_path = output_dir / f"signals_archive_{date_str}.json"
 
     envelopes_json = [sig.model_dump(mode="json") for sig in old_signals]
