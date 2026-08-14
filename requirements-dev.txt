@@ -6,13 +6,13 @@
 #
 aiosqlite==0.22.1
     # via -r requirements.in
-annotated-doc==0.0.4
+annotated-doc==0.0.5
     # via fastapi
-annotated-types==0.7.0
+annotated-types==0.8.0
     # via pydantic
-anthropic==0.116.0
+anthropic==0.122.0
     # via -r requirements.in
-anyio==4.13.0
+anyio==4.14.2
     # via
     #   anthropic
     #   httpx
@@ -25,20 +25,15 @@ certifi==2026.5.20
     #   requests
 charset-normalizer==3.4.7
     # via requests
-click==8.4.1
+click==8.4.2
     # via uvicorn
-colorama==0.4.6
-    # via
-    #   click
-    #   pytest
-    #   tqdm
 distro==1.9.0
     # via
     #   anthropic
     #   openai
 docstring-parser==0.18.0
     # via anthropic
-fastapi==0.139.0
+fastapi==0.141.1
     # via -r requirements.in
 h11==0.16.0
     # via
@@ -55,31 +50,34 @@ idna==3.17
     #   anyio
     #   httpx
     #   requests
-iniconfig==2.3.0
-    # via pytest
-jiter==0.15.0
+jiter==0.16.0
     # via
     #   anthropic
     #   openai
-numpy==2.2.6
+joblib==1.5.3
+    # via scikit-learn
+narwhals==2.24.0
+    # via scikit-learn
+numpy==2.5.2
     # via
     #   pandas
+    #   scikit-learn
+    #   scipy
     #   ta
-openai==2.45.0
+    #   xgboost
+nvidia-nccl-cu13==2.31.2
+    # via xgboost
+openai==2.54.0
     # via -r requirements.in
-packaging==26.2
-    # via pytest
-pandas==2.3.3
+pandas==3.0.5
     # via
     #   -r requirements.in
     #   ta
-pluggy==1.6.0
-    # via pytest
-prometheus-client==0.25.0
+prometheus-client==0.26.0
     # via
     #   -r requirements.in
     #   prometheus-fastapi-instrumentator
-prometheus-fastapi-instrumentator==8.0.2
+prometheus-fastapi-instrumentator==8.1.0
     # via -r requirements.in
 pydantic==2.13.4
     # via
@@ -89,50 +87,41 @@ pydantic==2.13.4
     #   pydantic-settings
 pydantic-core==2.46.4
     # via pydantic
-pydantic-settings==2.14.2
+pydantic-settings==2.15.0
     # via -r requirements.in
-pygments==2.20.0
-    # via pytest
-pytest==9.1.1
-    # via
-    #   -r requirements-dev.in
-    #   pytest-asyncio
-pytest-asyncio==1.4.0
-    # via -r requirements-dev.in
 python-dateutil==2.9.0.post0
     # via pandas
 python-dotenv==1.2.2
     # via
     #   -r requirements.in
     #   pydantic-settings
-pytz==2026.2
-    # via pandas
 pyyaml==6.0.3
-    # via
-    #   -r requirements.in
-    #   responses
+    # via -r requirements.in
 requests==2.34.2
+    # via -r requirements.in
+scikit-learn==1.9.0
+    # via -r requirements.in
+scipy==1.18.0
     # via
     #   -r requirements.in
-    #   responses
-responses==0.26.2
-    # via -r requirements-dev.in
-ruff==0.15.21
-    # via -r requirements-dev.in
+    #   scikit-learn
+    #   xgboost
 six==1.17.0
     # via python-dateutil
 sniffio==1.3.1
     # via
     #   anthropic
     #   openai
-starlette==1.3.1
+starlette==1.6.0
     # via
     #   -r requirements.in
     #   fastapi
     #   prometheus-fastapi-instrumentator
 ta==0.11.0
     # via -r requirements.in
-tqdm==4.67.3
+threadpoolctl==3.6.0
+    # via scikit-learn
+tqdm==4.70.0
     # via openai
 typing-extensions==4.15.0
     # via
@@ -142,19 +131,16 @@ typing-extensions==4.15.0
     #   openai
     #   pydantic
     #   pydantic-core
-    #   pytest-asyncio
     #   starlette
     #   typing-inspection
-typing-inspection==0.4.2
+typing-inspection==0.4.4
     # via
     #   fastapi
     #   pydantic
     #   pydantic-settings
-tzdata==2026.2
-    # via pandas
 urllib3==2.7.0
-    # via
-    #   requests
-    #   responses
-uvicorn==0.51.0
+    # via requests
+uvicorn==0.52.3
+    # via -r requirements.in
+xgboost==3.4.0
     # via -r requirements.in
