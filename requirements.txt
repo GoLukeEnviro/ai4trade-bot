@@ -12,7 +12,7 @@ annotated-types==0.7.0
     # via pydantic
 anthropic==0.116.0
     # via -r requirements.in
-anyio==4.13.0
+anyio==4.14.2
     # via
     #   anthropic
     #   httpx
@@ -27,10 +27,6 @@ charset-normalizer==3.4.7
     # via requests
 click==8.4.1
     # via uvicorn
-colorama==0.4.6
-    # via
-    #   click
-    #   tqdm
 distro==1.9.0
     # via
     #   anthropic
@@ -69,6 +65,8 @@ numpy==2.2.6
     #   scipy
     #   ta
     #   xgboost
+nvidia-nccl-cu12==2.31.2
+    # via xgboost
 openai==2.45.0
     # via -r requirements.in
 pandas==2.3.3
@@ -107,6 +105,7 @@ scikit-learn==1.9.0
     # via -r requirements.in
 scipy==1.17.1
     # via
+    #   -r requirements.in
     #   scikit-learn
     #   xgboost
 six==1.17.0
